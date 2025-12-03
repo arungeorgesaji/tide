@@ -1,8 +1,8 @@
-#!/usr/bin/env -s nim r 
+#!/usr/bin/env -S nim r 
 
 import core/buffer
 import tui/terminal
-import strutils, os
+import strutils, os, illwill
 
 type
   EditorMode = enum
@@ -16,6 +16,7 @@ type
     mode: EditorMode
     cursorRow, cursorCol: int
     running: bool
+    screenWidth, screenHeight: int
 
 proc newEditor(filepath: string = ""): Editor =
   result = Editor(
@@ -24,18 +25,40 @@ proc newEditor(filepath: string = ""): Editor =
     mode: modeNormal,
     cursorRow: 0,
     cursorCol: 0,
-    running: true
+    running: true,
+    screenWidth: 80,
+    screenHeight: 24
   )
+
+proc clampCursor(editor: Editor) =
+  let lineCount = editor.buffer.getLineCount()
+  if lineCount == 0:
+    editor.cursorRow = 0
+    editor.cursorCol = 0
+    return
+  
+  editor.cursorRow = max(0, min(editor.cursorRow, lineCount - 1))
+  
+  let currentLine = editor.buffer.getLine(editor.cursorRow)
+  editor.cursorCol = max(0, min(editor.cursorCol, currentLine.len))
 
 proc handleNormalMode(editor: Editor, key: KeyEvent) =
   case key.key:
   of keyChar:
     case key.ch:
-    of 'i', 'I': editor.mode = modeInsert
-    of 'h': editor.cursorCol = max(0, editor.cursorCol - 1)
-    of 'j': editor.cursorRow = min(editor.buffer.getLineCount() - 1, editor.cursorRow + 1)
-    of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
-    of 'l': editor.cursorCol += 1
+    of 'i': editor.mode = modeInsert
+    of 'h': 
+      editor.cursorCol = max(0, editor.cursorCol - 1)
+      editor.clampCursor()
+    of 'j': 
+      editor.cursorRow += 1
+      editor.clampCursor()
+    of 'k': 
+      editor.cursorRow = max(0, editor.cursorRow - 1)
+      editor.clampCursor()
+    of 'l': 
+      editor.cursorCol += 1
+      editor.clampCursor()
     of 'q': editor.running = false
     else: discard
   of keyEscape: editor.running = false
@@ -43,31 +66,48 @@ proc handleNormalMode(editor: Editor, key: KeyEvent) =
 
 proc handleInsertMode(editor: Editor, key: KeyEvent) =
   case key.key:
-  of keyEscape: editor.mode = modeNormal
+  of keyEscape: 
+    editor.mode = modeNormal
+    editor.clampCursor()
   of keyChar:
+    if key.ctrl and key.ch == 'c':
+      editor.running = false
+      return
+    
     editor.buffer.insertChar(editor.cursorRow, editor.cursorCol, key.ch)
     editor.cursorCol += 1
+    editor.clampCursor()
   of keyBackspace:
     if editor.cursorCol > 0:
       editor.cursorCol -= 1
       editor.buffer.deleteChar(editor.cursorRow, editor.cursorCol)
+      editor.clampCursor()
+    elif editor.cursorRow > 0:
+      editor.cursorRow -= 1
+      let prevLine = editor.buffer.getLine(editor.cursorRow)
+      editor.cursorCol = prevLine.len
+      editor.clampCursor()
   of keyEnter:
     editor.cursorRow += 1
     editor.cursorCol = 0
+    editor.clampCursor()
   else: discard
 
 proc render(editor: Editor) =
-  let (rows, cols) = editor.terminal.getSize()
+  let (cols, rows) = editor.terminal.getSize()
+  editor.screenWidth = cols
+  editor.screenHeight = rows
   
   editor.terminal.clear()
   
-  let startRow = 0
-  let endRow = min(rows - 2, editor.buffer.getLineCount() - 1)
+  var tb = newTerminalBuffer(cols, rows)
   
-  for i in 0..endRow:
-    let line = editor.buffer.getLine(startRow + i)
-    let displayLine = if line.len > cols: line[0..cols-1] else: line
-    editor.terminal.print(i, 0, displayLine)
+  let visibleRows = min(rows - 1, editor.buffer.getLineCount())
+  
+  for i in 0..<visibleRows:
+    let line = editor.buffer.getLine(i)
+    let displayLine = if line.len > cols: line[0..<cols] else: line
+    tb.write(0, i, displayLine)
   
   let modeStr = case editor.mode:
     of modeNormal: "NORMAL"
@@ -78,30 +118,35 @@ proc render(editor: Editor) =
                (if editor.buffer.dirty: " [+] " else: " [ ] ") &
                " | " & $(editor.cursorRow+1) & ":" & $(editor.cursorCol+1)
   
-  editor.terminal.print(rows-1, 0, status & " ".repeat(cols - status.len))
+  let paddedStatus = status & " ".repeat(max(0, cols - status.len))
+  tb.write(0, rows-1, paddedStatus)
   
-  editor.terminal.moveCursor(editor.cursorRow, editor.cursorCol)
+  if editor.cursorRow < rows-1 and editor.cursorCol < cols:
+    tb.setCursorPos(editor.cursorCol, editor.cursorRow)
   
-  editor.terminal.refresh()
+  tb.display()
 
 proc run(editor: Editor) =
   editor.terminal.initTerminal()
   
-  while editor.running:
-    editor.render()
-    
-    let key = editor.terminal.getKeyEvent()
-    
-    case editor.mode:
-    of modeNormal: editor.handleNormalMode(key)
-    of modeInsert: editor.handleInsertMode(key)
-    of modeVisual: discard  
-    
-    if key.key == keyChar and key.ch == 'z' and key.ctrl:
-      editor.terminal.deinitTerminal()
-      editor.terminal.initTerminal()
-  
-  editor.terminal.deinitTerminal()
+  try:
+    while editor.running:
+      editor.render()
+      
+      let key = editor.terminal.getKeyEvent()
+      
+      case editor.mode:
+      of modeNormal: editor.handleNormalMode(key)
+      of modeInsert: editor.handleInsertMode(key)
+      of modeVisual: discard
+      
+      if key.key == keyNone:
+        let (newCols, newRows) = editor.terminal.getSize()
+        if newCols != editor.screenWidth or newRows != editor.screenHeight:
+          editor.screenWidth = newCols
+          editor.screenHeight = newRows
+  finally:
+    editor.terminal.deinitTerminal()
 
 when isMainModule:
   var filename = ""

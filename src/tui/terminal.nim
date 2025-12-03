@@ -1,116 +1,85 @@
-import ncurses
-
-const
-  KEY_F1* {.importc: "KEY_F(1)", header: "<ncurses.h>".}: cint = 265
-  KEY_F2* {.importc: "KEY_F(2)", header: "<ncurses.h>".}: cint = 266
-  KEY_F3* {.importc: "KEY_F(3)", header: "<ncurses.h>".}: cint = 267
-  KEY_F4* {.importc: "KEY_F(4)", header: "<ncurses.h>".}: cint = 268
-  KEY_F5* {.importc: "KEY_F(5)", header: "<ncurses.h>".}: cint = 269
-  KEY_F6* {.importc: "KEY_F(6)", header: "<ncurses.h>".}: cint = 270
-  KEY_F7* {.importc: "KEY_F(7)", header: "<ncurses.h>".}: cint = 271
-  KEY_F8* {.importc: "KEY_F(8)", header: "<ncurses.h>".}: cint = 272
-  KEY_F9* {.importc: "KEY_F(9)", header: "<ncurses.h>".}: cint = 273
-  KEY_F10* {.importc: "KEY_F(10)", header: "<ncurses.h>".}: cint = 274
-  KEY_F11* {.importc: "KEY_F(11)", header: "<ncurses.h>".}: cint = 275
-  KEY_F12* {.importc: "KEY_F(12)", header: "<ncurses.h>".}: cint = 276
+import illwill
 
 type
-  Key* = enum
-    keyNone, keyHome, keyEnd, keyEscape, keyEnter, keyTab,
-    keyBackspace, keySpace,
-    keyUp, keyDown, keyLeft, keyRight, 
-    keyPageUp, keyPageDown,
-    keyF1, keyF2, keyF3, keyF4, keyF5, keyF6,
-    keyF7, keyF8, keyF9, keyF10, keyF11, keyF12,
-    keyChar  
   KeyEvent* = object
-    key*: Key
+    key*: Key        
     ch*: char
     ctrl*: bool
     alt*: bool
     shift*: bool
   Terminal* = ref object
     initialized: bool
-    window: ptr Window  
+
+proc exitProc() {.noconv.} =
+  illwillDeinit()
+  showCursor()
+  quit(0)
 
 proc initTerminal*(term: Terminal) =
   if not term.initialized:
-    term.window = initscr()  
-    discard cbreak()
-    discard noecho()
-    discard keypad(term.window, true)
-    discard curs_set(1)
+    illwillInit(fullscreen=true)
+    setControlCHook(exitProc)
+    hideCursor()
     term.initialized = true
 
 proc deinitTerminal*(term: Terminal) =
   if term.initialized:
-    discard endwin()
+    showCursor()
+    illwillDeinit()
     term.initialized = false
 
 proc getKeyEvent*(term: Terminal): KeyEvent =
-  let code = getch()
-
-  if code >= 0 and code <= 255:
-    result.ch = chr(code)
-  else:
-    result.ch = '\0'
-
-  case code:
-  of 27: result.key = keyEscape
-  of 10, 13: result.key = keyEnter
-  of 9: result.key = keyTab
-  of KEY_BACKSPACE, 127: result.key = keyBackspace
-  of KEY_UP: result.key = keyUp
-  of KEY_DOWN: result.key = keyDown
-  of KEY_LEFT: result.key = keyLeft
-  of KEY_RIGHT: result.key = keyRight
-  of KEY_HOME: result.key = keyHome
-  of KEY_END: result.key = keyEnd
-  of KEY_PPAGE: result.key = keyPageUp
-  of KEY_NPAGE: result.key = keyPageDown
-  of KEY_F1: result.key = keyF1
-  of KEY_F2: result.key = keyF2
-  of KEY_F3: result.key = keyF3
-  of KEY_F4: result.key = keyF4
-  of KEY_F5: result.key = keyF5
-  of KEY_F6: result.key = keyF6
-  of KEY_F7: result.key = keyF7
-  of KEY_F8: result.key = keyF8
-  of KEY_F9: result.key = keyF9
-  of KEY_F10: result.key = keyF10
-  of KEY_F11: result.key = keyF11
-  of KEY_F12: result.key = keyF12
-  else:
-    result.key = keyChar
+  let key = getKey()  
+  case key:
+    of Key.None: result.key = Key.None
+    of Key.Escape: result.key = Key.Escape
+    of Key.Enter: result.key = Key.Enter
+    of Key.Tab: result.key = Key.Tab
+    of Key.Backspace: result.key = Key.Backspace
+    of Key.Space: result.key = Key.Space
+    of Key.Up: result.key = Key.Up
+    of Key.Down: result.key = Key.Down
+    of Key.Left: result.key = Key.Left
+    of Key.Right: result.key = Key.Right
+    of Key.Home: result.key = Key.Home
+    of Key.End: result.key = Key.End
+    of Key.PageUp: result.key = Key.PageUp
+    of Key.PageDown: result.key = Key.PageDown
+    of Key.F1: result.key = Key.F1
+    of Key.F2: result.key = Key.F2
+    of Key.F3: result.key = Key.F3
+    of Key.F4: result.key = Key.F4
+    of Key.F5: result.key = Key.F5
+    of Key.F6: result.key = Key.F6
+    of Key.F7: result.key = Key.F7
+    of Key.F8: result.key = Key.F8
+    of Key.F9: result.key = Key.F9
+    of Key.F10: result.key = Key.F10
+    of Key.F11: result.key = Key.F11
+    of Key.F12: result.key = Key.F12
+    else: result.key = Key.None
 
 proc getSize*(term: Terminal): (int, int) =
-  var rows, cols: cint
-  getmaxyx(term.window, rows, cols)
-  (rows.int, cols.int)
+  (terminalWidth().int, terminalHeight().int)  
 
 proc clear*(term: Terminal) =
-  discard wclear(term.window)
+  clear(term)  
 
 proc refresh*(term: Terminal) =
-  discard wrefresh(term.window)
-
-proc moveCursor*(term: Terminal, row, col: int) =
-  discard wmove(term.window, row.cint, col.cint)
-
-proc print*(term: Terminal, row, col: int, text: string) =
-  discard mvwprintw(term.window, row.cint, col.cint, text)
-
-proc setColor*(term: Terminal, fg, bg: int) =
   discard
 
+proc moveCursor*(term: Terminal, row, col: int) =
+  var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
+  setCursorPos(tb, col, row)
+  tb.display()
+
+proc print*(term: Terminal, row, col: int, text: string) =
+  var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
+  tb.write(col, row, text)
+  tb.display()
+
+proc setColor*(term: Terminal, fg, bg: int) =
+  setColor(term, fg, bg)  
+
 proc drawBox*(term: Terminal, row, col, height, width: int) =
-  for r in row..row+height-1:
-    term.print(r, col, "│")
-    term.print(r, col+width-1, "│")
-  for c in col..col+width-1:
-    term.print(row, c, "─")
-    term.print(row+height-1, c, "─")
-  term.print(row, col, "┌")
-  term.print(row, col+width-1, "┐")
-  term.print(row+height-1, col, "└")
-  term.print(row+height-1, col+width-1, "┘")
+  drawBox(term, row, col, height, width)  

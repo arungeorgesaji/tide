@@ -4,7 +4,7 @@ description   = "Modular terminal editor framework"
 license       = "MIT"
 
 requires "nim"
-requires "ncurses"
+requires "illwill"
 requires "regex"          
 
 bin = @["tide"]
