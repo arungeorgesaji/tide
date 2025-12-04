@@ -46,22 +46,32 @@ proc clampCursor(editor: Editor) =
   editor.cursorCol = editor.cursorCol.clamp(0, line.len)
 
 proc undo(editor: Editor) =
-  if editor.undoStack.len == 0: return
+  if editor.undoStack.len == 0:
+    return
+
   let item = editor.undoStack.pop()
+
   case item.action
   of uaInsertChar:
-    if item.col < editor.buffer.lines[item.row].len:
+    if item.col <= editor.buffer.lines[item.row].high:
       editor.buffer.lines[item.row].delete(item.col .. item.col)
+    editor.cursorCol = item.col
   of uaDeleteChar:
     editor.buffer.lines[item.row].insert(item.text, item.col)
-  of uaDeleteLine:
-    editor.buffer.lines.insert(item.text, item.row)
+    editor.cursorCol = item.col + 1
   of uaInsertLine:
     if item.row < editor.buffer.lines.len:
       editor.buffer.lines.delete(item.row)
+    editor.cursorRow = max(0, item.row - 1)
+  of uaDeleteLine:
+    editor.buffer.lines.insert(item.text, item.row)
+    editor.cursorRow = item.row
   of uaSetLine:
     editor.buffer.lines[item.row] = item.text
+    editor.cursorRow = item.row
+
   editor.buffer.dirty = true
+  editor.clampCursor()
 
 proc handleNormalMode(editor: Editor, key: Key) =
   if key.ord >= 0 and key.ord < 256:
@@ -131,30 +141,41 @@ proc handleInsertMode(editor: Editor, key: Key) =
   case key
   of Key.Escape:
     editor.mode = modeNormal
+
   of Key.Enter:
     let line = editor.buffer.getLine(editor.cursorRow)
     let col = min(editor.cursorCol, line.len)
-    editor.pushUndo(uaSetLine, editor.cursorRow, 0, line)
+    let originalLine = line
+    editor.pushUndo(uaSetLine, editor.cursorRow, 0, originalLine)
+    editor.pushUndo(uaInsertLine, editor.cursorRow + 1, 0)
     editor.buffer.setLine(editor.cursorRow, line[0..<col])
     editor.buffer.insertLine(editor.cursorRow + 1, line[col..^1])
     editor.cursorRow += 1
     editor.cursorCol = 0
+
   of Key.Backspace:
     if editor.cursorCol > 0:
-      editor.pushUndo(uaInsertChar, editor.cursorRow, editor.cursorCol - 1, $editor.buffer.lines[editor.cursorRow][editor.cursorCol - 1])
+      let deletedChar = editor.buffer.lines[editor.cursorRow][editor.cursorCol - 1]
+      editor.pushUndo(uaDeleteChar, editor.cursorRow, editor.cursorCol - 1, $deletedChar)
       editor.cursorCol -= 1
       editor.buffer.deleteChar(editor.cursorRow, editor.cursorCol)
     elif editor.cursorRow > 0:
-      let prevLen = editor.buffer.lines[editor.cursorRow - 1].len
+      let currentLine = editor.buffer.lines[editor.cursorRow]
+      let prevLine = editor.buffer.lines[editor.cursorRow - 1]
+      editor.pushUndo(uaSetLine, editor.cursorRow - 1, 0, prevLine)
+      editor.pushUndo(uaInsertLine, editor.cursorRow, 0, currentLine)
+      let prevLen = prevLine.len
       editor.cursorRow -= 1
       editor.cursorCol = prevLen
       editor.buffer.deleteLine(editor.cursorRow + 1)
+
   else:
-    if key.ord in 32..126:
+    if key.ord in 32..126:  
       let ch = chr(key.ord)
-      editor.pushUndo(uaDeleteChar, editor.cursorRow, editor.cursorCol, $ch)
+      editor.pushUndo(uaInsertChar, editor.cursorRow, editor.cursorCol, $ch)
       editor.buffer.insertChar(editor.cursorRow, editor.cursorCol, ch)
       editor.cursorCol += 1
+
   editor.clampCursor()
   editor.buffer.dirty = true
 
