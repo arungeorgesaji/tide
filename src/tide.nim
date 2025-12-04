@@ -59,7 +59,7 @@ proc ensureCursorVisible(editor: Editor) =
   
   if editor.cursorCol < editor.viewportCol:
     editor.viewportCol = max(0, editor.cursorCol)
-  elif editor.cursorCol >= editor.viewportCol + editor.screenWidth - 10: 
+  elif editor.cursorCol >= editor.viewportCol + editor.screenWidth - 10:  
     editor.viewportCol = editor.cursorCol - editor.screenWidth + 11
 
 proc undo(editor: Editor) =
