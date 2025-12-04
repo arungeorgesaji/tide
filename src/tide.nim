@@ -67,9 +67,14 @@ proc handleInsertMode(editor: Editor, key: Key) =
     editor.mode = modeNormal
     editor.clampCursor()
   of Key.Enter:
+    let line = editor.buffer.getLine(editor.cursorRow)
+    let col = min(editor.cursorCol, line.len)
+    
+    editor.buffer.setLine(editor.cursorRow, line[0 ..< col])
+    editor.buffer.insertLine(editor.cursorRow + 1, line[col .. ^1])
+    
     editor.cursorRow += 1
     editor.cursorCol = 0
-    editor.clampCursor()
   of Key.Backspace:
     if editor.cursorCol > 0:
       editor.cursorCol -= 1
@@ -97,30 +102,50 @@ proc render(editor: Editor) =
   
   var tb = newTerminalBuffer(editor.screenWidth, editor.screenHeight)
   
-  let visibleRows = min(editor.screenHeight - 1, editor.buffer.getLineCount())
-  
-  for i in 0..<visibleRows:
+  for i in 0..<min(editor.screenHeight - 1, editor.buffer.getLineCount()):
     let line = editor.buffer.getLine(i)
-    let displayLine = if line.len > editor.screenWidth: 
-                        line[0..<editor.screenWidth] 
-                      else: 
+    let displayLine = if line.len > editor.screenWidth:
+                        line[0..<editor.screenWidth]
+                      else:
                         line
     tb.write(0, i, displayLine)
   
+  for i in editor.buffer.getLineCount() ..< editor.screenHeight - 1:
+    tb.write(0, i, fgCyan, "~")
+  
   let modeStr = case editor.mode:
-    of modeNormal: "NORMAL"
-    of modeInsert: "INSERT"
-    of modeVisual: "VISUAL"
+    of modeNormal: " NORMAL "
+    of modeInsert: " INSERT "
+    of modeVisual: " VISUAL "
   
-  let status = modeStr & " | " & editor.buffer.name & 
-               (if editor.buffer.dirty: " [+] " else: " [ ] ") &
-               " | " & $(editor.cursorRow+1) & ":" & $(editor.cursorCol+1)
+  let status = modeStr & " | " & editor.buffer.name &
+               (if editor.buffer.dirty: " [+]" else: "") &
+               " | " & $editor.buffer.getLineCount() & "L " &
+               $(editor.cursorRow+1) & ":" & $(editor.cursorCol+1)
   
-  let paddedStatus = status & " ".repeat(max(0, editor.screenWidth - status.len))
-  tb.write(0, editor.screenHeight-1, paddedStatus)
+  tb.write(0, editor.screenHeight-1, bgWhite, fgBlack, status)
+  if status.len < editor.screenWidth:
+    tb.write(status.len, editor.screenHeight-1, " ".repeat(editor.screenWidth - status.len))
   
-  if editor.cursorRow < editor.screenHeight-1 and editor.cursorCol < editor.screenWidth:
-    tb.setCursorPos(editor.cursorCol, editor.cursorRow)
+  if editor.cursorRow < editor.screenHeight - 1:
+    let x = min(editor.cursorCol, editor.screenWidth - 1)
+    let y = editor.cursorRow
+    let line = editor.buffer.getLine(editor.cursorRow)
+    let chUnder = if editor.cursorCol < line.len:
+                    line[editor.cursorCol]
+                  else:
+                    ' '
+    
+    case editor.mode
+    of modeNormal:
+      tb.write(x, y, bgWhite, fgBlack, $chUnder)   
+    of modeInsert:
+      if editor.cursorCol < line.len:
+        tb.write(x, y, fgWhite, bgCyan, $chUnder)  
+      else:
+        tb.write(x, y, fgCyan, "▏")                
+    of modeVisual:
+      tb.write(x, y, bgYellow, fgBlack, $chUnder)  
   
   tb.display()
 

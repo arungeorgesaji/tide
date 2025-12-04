@@ -51,6 +51,25 @@ proc deleteChar*(buffer: Buffer, line, col: int) =
     buffer.lines[line].delete(col..col)
     buffer.dirty = true
 
+proc insertLine*(buffer: Buffer, line: int, content: string) =
+  if line > buffer.lines.len:
+    buffer.lines.add(content)
+  else:
+    buffer.lines.insert(content, line)
+  buffer.dirty = true
+
+proc deleteLine*(buffer: Buffer, line: int) =
+  if line < buffer.lines.len:
+    buffer.lines.delete(line)
+    if buffer.lines.len == 0:
+      buffer.lines = @[""]
+    buffer.dirty = true
+
+proc setLine*(buffer: Buffer, line: int, content: string) =
+  if line < buffer.lines.len:
+    buffer.lines[line] = content
+    buffer.dirty = true
+
 proc getLineCount*(buffer: Buffer): int =
   buffer.lines.len
 
