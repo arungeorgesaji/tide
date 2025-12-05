@@ -1,5 +1,8 @@
 import std/[json, tables, os, sequtils, strutils]
 
+const configFileName = "config.json"
+let configPath = getAppDir() / configFileName
+
 type
   ColorTheme* = object
     name*: string
@@ -31,6 +34,21 @@ proc themeFromJson(name: string, node: JsonNode): ColorTheme =
   result.stringFg = node["stringFg"].getStr
   result.numberFg = node["numberFg"].getStr
 
+proc saveCurrentTheme*(tm: ThemeManager) =
+  let node = %*{
+    "selectedTheme": tm.currentTheme.name
+  }
+  writeFile(configPath, $node)
+
+proc loadSelectedTheme(): string =
+  if fileExists(configPath):
+    try:
+      let node = readFile(configPath).parseJson()
+      return node{"selectedTheme"}.getStr
+    except:
+      return ""
+  return ""
+
 proc newThemeManager*(path: string): ThemeManager =
   result = ThemeManager(themes: initTable[string, ColorTheme]())
 
@@ -40,12 +58,16 @@ proc newThemeManager*(path: string): ThemeManager =
     let theme = themeFromJson(themeName, themeNode)
     result.themes[themeName] = theme
 
-  if data.len > 0:
+  let saved = loadSelectedTheme()
+  if saved != "" and saved in result.themes:
+    result.currentTheme = result.themes[saved]
+  else:
     let first = data.keys.toSeq[0]
     result.currentTheme = result.themes[first]
 
 proc setTheme*(tm: ThemeManager, themeName: string): bool =
   if themeName in tm.themes:
     tm.currentTheme = tm.themes[themeName]
+    tm.saveCurrentTheme()     
     return true
   false
