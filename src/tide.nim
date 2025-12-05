@@ -1,6 +1,7 @@
 #!/usr/bin/env -S nim r
 
 import core/buffer
+import tui/theme
 import strutils, os, illwill, tables, sequtils, math
 
 type
@@ -27,6 +28,7 @@ type
     viewportRow: int  
     viewportCol: int  
     showLineNumbers: bool
+    themeManager: ThemeManager
 
 proc pushUndo(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
   editor.undoStack.add(UndoItem(action: action, row: row, col: col, text: text))
@@ -43,7 +45,8 @@ proc newEditor(filepath = ""): Editor =
     yankBuffer: "",
     viewportRow: 0,
     viewportCol: 0,
-    showLineNumbers: true
+    showLineNumbers: true,
+    themeManager: newThemeManager()
   )
 
 proc clampCursor(editor: Editor) =
@@ -152,6 +155,17 @@ proc handleCommandMode(editor: Editor, key: Key) =
       editor.showLineNumbers = true
     elif cmd == ":set nonumber" or cmd == ":set nonu":
       editor.showLineNumbers = false
+    elif cmd.startsWith(":theme "):
+      let themeName = cmd[7..^1].strip()
+      if editor.themeManager.setTheme(themeName):
+        editor.cmdBuffer = ":theme " & themeName & " (applied)"
+      else:
+        editor.cmdBuffer = ":theme (unknown theme)"
+    elif cmd == ":themes":
+      var themeList = ""
+      for name in editor.themeManager.themes.keys:
+        themeList &= name & " "
+      editor.cmdBuffer = ":themes: " & themeList
     elif cmd.startsWith(":"):
       editor.cmdBuffer = cmd & " (unknown)"
     editor.mode = modeNormal
@@ -211,11 +225,26 @@ proc handleInsertMode(editor: Editor, key: Key) =
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
 
+proc rgbToFgColor(rgb: RGB): ForegroundColor =
+  let brightness = (rgb.r + rgb.g + rgb.b) div 3
+  if brightness < 64: return fgBlack
+  elif brightness < 128: return fgRed
+  elif brightness < 192: return fgGreen
+  else: return fgWhite
+
+proc rgbToBgColor(rgb: RGB): BackgroundColor =
+  let brightness = (rgb.r + rgb.g + rgb.b) div 3
+  if brightness < 64: return bgBlack
+  elif brightness < 128: return bgRed
+  elif brightness < 192: return bgGreen
+  else: return bgWhite
+
 proc render(editor: Editor) =
   editor.screenWidth = terminalWidth()
   editor.screenHeight = terminalHeight()
   var tb = newTerminalBuffer(editor.screenWidth, editor.screenHeight)
   
+  let theme = editor.themeManager.currentTheme
   let lineCount = editor.buffer.getLineCount()
   let lineNumWidth = if editor.showLineNumbers: max(4, ($lineCount).len + 1) else: 0
   
@@ -231,15 +260,23 @@ proc render(editor: Editor) =
       let isCurrentLine = (lineIdx == editor.cursorRow)
       
       if isCurrentLine:
-        tb.write(0, i, fgBlack, bgCyan, align(lineNum, lineNumWidth - 1))
-        tb.write(lineNumWidth - 1, i, fgBlack, bgCyan, "│")
+        tb.write(0, i, 
+                 rgbToFgColor(theme.currentLineFg), 
+                 rgbToBgColor(theme.currentLineBg), 
+                 align(lineNum, lineNumWidth - 1))
+        tb.write(lineNumWidth - 1, i, 
+                 rgbToFgColor(theme.currentLineFg), 
+                 rgbToBgColor(theme.currentLineBg), "│")
       else:
-        tb.write(0, i, fgCyan, align(lineNum, lineNumWidth - 1))
-        tb.write(lineNumWidth - 1, i, fgCyan, "│")
+        tb.write(0, i, 
+                 rgbToFgColor(theme.lineNumFg), 
+                 align(lineNum, lineNumWidth - 1))
+        tb.write(lineNumWidth - 1, i, 
+                 rgbToFgColor(theme.lineNumFg), "│")
     
     if editor.viewportCol < line.len:
       let visibleText = line[editor.viewportCol..<min(line.len, editor.viewportCol + maxTextWidth)]
-      tb.write(textStartCol, i, visibleText)
+      tb.write(textStartCol, i, rgbToFgColor(theme.fg), visibleText)
     
     let textLen = if editor.viewportCol < line.len: 
         min(line.len - editor.viewportCol, maxTextWidth)
@@ -249,7 +286,7 @@ proc render(editor: Editor) =
 
   for i in (lineCount - editor.viewportRow)..<(editor.screenHeight - 1):
     let textStartCol = if editor.showLineNumbers: lineNumWidth else: 0
-    tb.write(textStartCol, i, fgCyan, "~")
+    tb.write(textStartCol, i, rgbToFgColor(theme.lineNumFg), "~")
   
   let status = case editor.mode
     of modeNormal: " NORMAL "
@@ -266,15 +303,19 @@ proc render(editor: Editor) =
   let infoText = " " & fileInfo & " "
   let positionText = " " & position & percent & " "
   
-  tb.write(0, editor.screenHeight - 1, bgWhite, fgBlack, " ".repeat(editor.screenWidth))
+  let statusFg = rgbToFgColor(theme.statusFg)
+  let statusBg = rgbToBgColor(theme.statusBg)
   
-  tb.write(0, editor.screenHeight - 1, bgWhite, fgBlack, status)
+  tb.write(0, editor.screenHeight - 1, statusFg, statusBg, " ".repeat(editor.screenWidth))
+  
+  tb.write(0, editor.screenHeight - 1, statusFg, statusBg, status)
   
   let infoStart = statusWidth
-  tb.write(infoStart, editor.screenHeight - 1, bgWhite, fgBlack, infoText)
+  tb.write(infoStart, editor.screenHeight - 1, statusFg, statusBg, infoText)
   
   let posStart = editor.screenWidth - positionText.len
-  tb.write(posStart, editor.screenHeight - 1, bgWhite, fgBlack, positionText)
+  if posStart > infoStart + infoText.len:  
+    tb.write(posStart, editor.screenHeight - 1, statusFg, statusBg, positionText)
   
   if editor.cursorRow >= editor.viewportRow and editor.cursorRow < editor.viewportRow + editor.screenHeight - 1:
     let y = editor.cursorRow - editor.viewportRow

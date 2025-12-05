@@ -7,7 +7,7 @@ type
     name*: string
     fg*, bg*: RGB
     lineNumFg*, lineNumBg*: RGB
-    currentLineFg*, currentLineBg: RGB 
+    currentLineFg*, currentLineBg*: RGB 
     statusFg*, statusBg*: RGB 
     selectionFg*, selectionBg*: RGB 
     commentFg*: RGB 
