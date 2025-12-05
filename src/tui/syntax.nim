@@ -1,4 +1,4 @@
-import std/[strutils, tables, sequtils]
+import std/[strutils, tables, sequtils, os]
 import theme
 
 type
@@ -35,15 +35,6 @@ type
   
   SyntaxHighlighter* = ref object
     language*: Language
-    case language: Language
-    of langNim:
-      discard
-    of langC, langCpp:
-      discard
-    of langPython:
-      discard
-    else:
-      discard
 
 const
   commonKeywords = [
@@ -64,7 +55,7 @@ const
     "seq", "list", "dict", "map", "set", "vector", "string", "str", "cstring"
   ]
 
-proc detectLanguage(filename: string): Language =
+proc detectLanguage*(filename: string): Language =
   let ext = filename.splitFile().ext.toLowerAscii()
   case ext
   of ".nim": langNim

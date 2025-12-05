@@ -1,7 +1,7 @@
 #!/usr/bin/env -S nim r
 
 import core/buffer
-import tui/theme
+import tui/theme, tui/syntax
 import strutils, os, illwill, tables, sequtils, math
 
 type
@@ -29,6 +29,7 @@ type
     viewportCol: int  
     showLineNumbers: bool
     themeManager: ThemeManager
+    language: Language
 
 proc pushUndo(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
   editor.undoStack.add(UndoItem(action: action, row: row, col: col, text: text))
@@ -46,7 +47,8 @@ proc newEditor(filepath = ""): Editor =
     viewportRow: 0,
     viewportCol: 0,
     showLineNumbers: true,
-    themeManager: newThemeManager(getAppDir() / "themes.json")
+    themeManager: newThemeManager(getAppDir() / "themes.json"),
+    language: detectLanguage(filepath)
   )
 
 proc clampCursor(editor: Editor) =
@@ -166,6 +168,12 @@ proc handleCommandMode(editor: Editor, key: Key) =
       for name in editor.themeManager.themes.keys:
         themeList &= name & " "
       editor.cmdBuffer = ":themes: " & themeList
+    elif cmd == ":syntax on":
+      editor.language = detectLanguage(editor.buffer.name)
+      editor.cmdBuffer = ":syntax on (enabled)"
+    elif cmd == ":syntax off":
+      editor.language = langNone
+      editor.cmdBuffer = ":syntax off (disabled)"
     elif cmd.startsWith(":"):
       editor.cmdBuffer = cmd & " (unknown)"
     editor.mode = modeNormal
@@ -321,6 +329,11 @@ proc render(editor: Editor) =
   let statusFg = parseNamedColor(theme.statusFg)
   let statusBg = parseNamedBgColor(theme.statusBg)
   
+  let commentFgColor = parseNamedColor(theme.commentFg)
+  let keywordFgColor = parseNamedColor(theme.keywordFg)
+  let stringFgColor = parseNamedColor(theme.stringFg)
+  let numberFgColor = parseNamedColor(theme.numberFg)
+  
   for i in 0..<editor.screenHeight - 1:
     tb.write(0, i, fgColor, bgColor, " ".repeat(editor.screenWidth))
   
@@ -352,18 +365,34 @@ proc render(editor: Editor) =
                  lineNumFgColor, 
                  lineNumBgColor, "│")
     
-    if editor.viewportCol < line.len:
-      let visibleText = line[editor.viewportCol..<min(line.len, editor.viewportCol + maxTextWidth)]
-      let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
-      tb.write(textStartCol, i, fgColor, lineBgColor, visibleText)
+    let tokens = tokenizeLine(line, editor.language)
     
-    let textLen = if editor.viewportCol < line.len: 
-        min(line.len - editor.viewportCol, maxTextWidth)
-      else: 0
-    if textLen < maxTextWidth:
+    var col = textStartCol
+    for token in tokens:
+      if col >= editor.screenWidth: break
+      
+      let tokenColor = case token.tokenType
+        of tokKeyword: keywordFgColor
+        of tokString: stringFgColor
+        of tokNumber: numberFgColor
+        of tokComment: commentFgColor
+        of tokOperator: keywordFgColor
+        of tokType: keywordFgColor
+        of tokFunction: stringFgColor
+        else: fgColor
+      
       let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
-      tb.write(textStartCol + textLen, i, fgColor, lineBgColor, 
-               " ".repeat(maxTextWidth - textLen))
+      
+      for ch in token.text:
+        if col >= editor.screenWidth: break
+        if col >= textStartCol:  
+          tb.write(col, i, tokenColor, lineBgColor, $ch)
+        inc(col)
+    
+    while col < editor.screenWidth:
+      let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
+      tb.write(col, i, fgColor, lineBgColor, " ")
+      inc(col)
 
   for i in (lineCount - editor.viewportRow)..<(editor.screenHeight - 1):
     let textStartCol = if editor.showLineNumbers: lineNumWidth else: 0
