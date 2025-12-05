@@ -46,7 +46,7 @@ proc newEditor(filepath = ""): Editor =
     viewportRow: 0,
     viewportCol: 0,
     showLineNumbers: true,
-    themeManager: newThemeManager()
+    themeManager: newThemeManager(getAppDir() / "themes.json")
   )
 
 proc clampCursor(editor: Editor) =

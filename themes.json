@@ -1,0 +1,73 @@
+{
+  "solarized-dark": {
+    "name": "solarized-dark",
+    "fg": [131, 148, 150],
+    "bg": [0, 43, 54],
+    "lineNumFg": [88, 110, 117],
+    "lineNumBg": [0, 43, 54],
+    "currentLineFg": [147, 161, 161],
+    "currentLineBg": [7, 54, 66],
+    "statusFg": [147, 161, 161],
+    "statusBg": [7, 54, 66],
+    "selectionFg": [0, 43, 54],
+    "selectionBg": [38, 139, 210],
+    "commentFg": [88, 110, 117],
+    "keywordFg": [133, 153, 0],
+    "stringFg": [211, 54, 130],
+    "numberFg": [42, 161, 152]
+  },
+
+  "solarized-light": {
+    "name": "solarized-light",
+    "fg": [101, 123, 131],
+    "bg": [253, 246, 227],
+    "lineNumFg": [147, 161, 161],
+    "lineNumBg": [253, 246, 227],
+    "currentLineFg": [101, 123, 131],
+    "currentLineBg": [238, 232, 213],
+    "statusFg": [101, 123, 131],
+    "statusBg": [238, 232, 213],
+    "selectionFg": [253, 246, 227],
+    "selectionBg": [38, 139, 210],
+    "commentFg": [147, 161, 161],
+    "keywordFg": [133, 153, 0],
+    "stringFg": [211, 54, 130],
+    "numberFg": [42, 161, 152]
+  },
+
+  "monokai": {
+    "name": "monokai",
+    "fg": [248, 248, 242],
+    "bg": [39, 40, 34],
+    "lineNumFg": [117, 113, 94],
+    "lineNumBg": [39, 40, 34],
+    "currentLineFg": [248, 248, 242],
+    "currentLineBg": [62, 61, 50],
+    "statusFg": [248, 248, 242],
+    "statusBg": [62, 61, 50],
+    "selectionFg": [39, 40, 34],
+    "selectionBg": [249, 38, 114],
+    "commentFg": [117, 113, 94],
+    "keywordFg": [249, 38, 114],
+    "stringFg": [230, 219, 116],
+    "numberFg": [174, 129, 255]
+  },
+
+  "dracula": {
+    "name": "dracula",
+    "fg": [248, 248, 242],
+    "bg": [40, 42, 54],
+    "lineNumFg": [98, 114, 164],
+    "lineNumBg": [40, 42, 54],
+    "currentLineFg": [248, 248, 242],
+    "currentLineBg": [68, 71, 90],
+    "statusFg": [248, 248, 242],
+    "statusBg": [68, 71, 90],
+    "selectionFg": [40, 42, 54],
+    "selectionBg": [189, 147, 249],
+    "commentFg": [98, 114, 164],
+    "keywordFg": [255, 121, 198],
+    "stringFg": [241, 250, 140],
+    "numberFg": [189, 147, 249]
+  }
+}
