@@ -1,44 +1,35 @@
-import std/[json, tables, os, sequtils]
-import colors
+import std/[json, tables, os, sequtils, strutils]
 
 type
-  RGB* = tuple[r: int, g: int, b: int]
-
   ColorTheme* = object
     name*: string
-    fg*, bg*: RGB
-    lineNumFg*, lineNumBg*: RGB
-    currentLineFg*, currentLineBg*: RGB 
-    statusFg*, statusBg*: RGB 
-    selectionFg*, selectionBg*: RGB 
-    commentFg*: RGB 
-    keywordFg*: RGB 
-    stringFg*: RGB 
-    numberFg*: RGB 
-  
+    fg*, bg*: string
+    lineNumFg*, lineNumBg*: string
+    currentLineFg*, currentLineBg*: string
+    statusFg*, statusBg*: string
+    selectionFg*, selectionBg*: string
+    commentFg*, keywordFg*, stringFg*, numberFg*: string
+
   ThemeManager* = ref object
     currentTheme*: ColorTheme
     themes*: Table[string, ColorTheme]
 
-proc toRGB(arr: JsonNode): RGB =
-  (arr[0].getInt, arr[1].getInt, arr[2].getInt)
-
 proc themeFromJson(name: string, node: JsonNode): ColorTheme =
   result.name = name
-  result.fg = toRGB(node["fg"])
-  result.bg = toRGB(node["bg"])
-  result.lineNumFg = toRGB(node["lineNumFg"])
-  result.lineNumBg = toRGB(node["lineNumBg"])
-  result.currentLineFg = toRGB(node["currentLineFg"])
-  result.currentLineBg = toRGB(node["currentLineBg"])
-  result.statusFg = toRGB(node["statusFg"])
-  result.statusBg = toRGB(node["statusBg"])
-  result.selectionFg = toRGB(node["selectionFg"])
-  result.selectionBg = toRGB(node["selectionBg"])
-  result.commentFg = toRGB(node["commentFg"])
-  result.keywordFg = toRGB(node["keywordFg"])
-  result.stringFg = toRGB(node["stringFg"])
-  result.numberFg = toRGB(node["numberFg"])
+  result.fg = node["fg"].getStr
+  result.bg = node["bg"].getStr
+  result.lineNumFg = node["lineNumFg"].getStr
+  result.lineNumBg = node["lineNumBg"].getStr
+  result.currentLineFg = node["currentLineFg"].getStr
+  result.currentLineBg = node["currentLineBg"].getStr
+  result.statusFg = node["statusFg"].getStr
+  result.statusBg = node["statusBg"].getStr
+  result.selectionFg = node["selectionFg"].getStr
+  result.selectionBg = node["selectionBg"].getStr
+  result.commentFg = node["commentFg"].getStr
+  result.keywordFg = node["keywordFg"].getStr
+  result.stringFg = node["stringFg"].getStr
+  result.numberFg = node["numberFg"].getStr
 
 proc newThemeManager*(path: string): ThemeManager =
   result = ThemeManager(themes: initTable[string, ColorTheme]())
@@ -52,7 +43,6 @@ proc newThemeManager*(path: string): ThemeManager =
   if data.len > 0:
     let first = data.keys.toSeq[0]
     result.currentTheme = result.themes[first]
-
 
 proc setTheme*(tm: ThemeManager, themeName: string): bool =
   if themeName in tm.themes:
