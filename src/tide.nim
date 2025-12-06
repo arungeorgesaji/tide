@@ -100,7 +100,34 @@ proc undo(editor: Editor) =
   editor.clampCursor()
   editor.ensureCursorVisible()
 
+proc handleNavigationKeys(editor: Editor, key: Key) =
+  case key
+  of Key.Left:   editor.cursorCol = max(0, editor.cursorCol - 1)
+  of Key.Right:  editor.cursorCol += 1
+  of Key.Up:     editor.cursorRow = max(0, editor.cursorRow - 1)
+  of Key.Down:   editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + 1)
+  of Key.Home:   editor.cursorCol = 0
+  of Key.End:    editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
+  of Key.PageUp:   
+    editor.cursorRow = max(0, editor.cursorRow - (editor.screenHeight - 3))
+  of Key.PageDown: 
+    editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + (editor.screenHeight - 3))
+  else: return  
+
+  editor.clampCursor()
+  editor.ensureCursorVisible()
+
 proc handleNormalMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+  
+  if key == Key.Escape:
+    editor.pendingOp = opNone
+    return
+  
   if key.ord >= 0 and key.ord < 256:
     let ch = chr(key.ord)
 
@@ -166,6 +193,12 @@ proc handleNormalMode(editor: Editor, key: Key) =
   editor.ensureCursorVisible()
 
 proc handleCommandMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+
   if key == Key.Enter:
     let cmd = editor.cmdBuffer
     if cmd == ":q" or cmd == ":q!":
@@ -216,6 +249,12 @@ proc handleCommandMode(editor: Editor, key: Key) =
     editor.cmdBuffer &= chr(key.ord)
 
 proc handleInsertMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+ 
   case key
   of Key.Escape:
     editor.mode = modeNormal
