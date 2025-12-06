@@ -16,6 +16,9 @@ type
     row, col: int
     text: string
 
+  PendingOp = enum
+    opNone, opDelete, opYank
+
   Editor = ref object
     buffer: Buffer
     mode: EditorMode
@@ -30,6 +33,7 @@ type
     showLineNumbers: bool
     themeManager: ThemeManager
     language: Language
+    pendingOp: PendingOp
 
 proc pushUndo(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
   editor.undoStack.add(UndoItem(action: action, row: row, col: col, text: text))
@@ -99,6 +103,23 @@ proc undo(editor: Editor) =
 proc handleNormalMode(editor: Editor, key: Key) =
   if key.ord >= 0 and key.ord < 256:
     let ch = chr(key.ord)
+
+    if editor.pendingOp != opNone:
+      if ch == 'd' and editor.pendingOp == opDelete:
+        if editor.cursorRow < editor.buffer.lines.len:
+          editor.yankBuffer = editor.buffer.lines[editor.cursorRow]
+          editor.pushUndo(uaDeleteLine, editor.cursorRow, 0, editor.buffer.lines[editor.cursorRow])
+          editor.buffer.deleteLine(editor.cursorRow)
+          editor.cursorRow = min(editor.cursorRow, max(0, editor.buffer.lines.high))
+      elif ch == 'y' and editor.pendingOp == opYank:
+        if editor.cursorRow < editor.buffer.lines.len:
+          editor.yankBuffer = editor.buffer.lines[editor.cursorRow]
+      
+      editor.pendingOp = opNone  
+      editor.clampCursor()
+      editor.ensureCursorVisible()
+      return
+
     case ch
     of 'i': editor.mode = modeInsert
     of 'h': editor.cursorCol = max(0, editor.cursorCol - 1)
@@ -109,20 +130,23 @@ proc handleNormalMode(editor: Editor, key: Key) =
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
     of 'd':
-      let k2 = getKey()
-      if k2 == Key.D:  
-        editor.pushUndo(uaDeleteLine, editor.cursorRow, 0, editor.buffer.lines[editor.cursorRow])
-        editor.buffer.deleteLine(editor.cursorRow)
-        editor.cursorRow = min(editor.cursorRow, max(0, editor.buffer.lines.high))
+      editor.pendingOp = opDelete  
     of 'y':
-      let k2 = getKey()
-      if k2 == Key.Y: 
-        editor.yankBuffer = editor.buffer.lines[editor.cursorRow]
+      editor.pendingOp = opYank    
     of 'p':
       if editor.yankBuffer != "":
-        editor.pushUndo(uaInsertLine, editor.cursorRow + 1, 0)
-        editor.buffer.insertLine(editor.cursorRow + 1, editor.yankBuffer)
-        editor.cursorRow += 1
+        let pasteRow = editor.cursorRow + 1
+        editor.pushUndo(uaInsertLine, pasteRow, 0)
+        editor.buffer.insertLine(pasteRow, editor.yankBuffer)
+        editor.cursorRow = pasteRow         
+        editor.cursorCol = 0
+    of 'P':
+      if editor.yankBuffer != "":
+        let pasteRow = editor.cursorRow
+        editor.pushUndo(uaInsertLine, pasteRow, 0)
+        editor.buffer.insertLine(pasteRow, editor.yankBuffer)
+        editor.cursorRow = pasteRow
+        editor.cursorCol = 0
     of 'u':
       editor.undo()
     of 'n':  
@@ -131,6 +155,7 @@ proc handleNormalMode(editor: Editor, key: Key) =
       editor.running = false
     else: discard
   elif key == Key.Escape:
+    editor.pendingOp = opNone  
     editor.running = false
   elif key == Key.PageDown:
     editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + editor.screenHeight - 2)
@@ -399,7 +424,10 @@ proc render(editor: Editor) =
     tb.write(textStartCol, i, lineNumFgColor, bgColor, "~")
   
   let status = case editor.mode
-    of modeNormal: " NORMAL "
+    of modeNormal:
+      if editor.pendingOp == opDelete: " DELETE LINE "
+      elif editor.pendingOp == opYank: " YANK LINE "
+      else: " NORMAL "
     of modeInsert: " INSERT "
     of modeCommand: " " & editor.cmdBuffer & " "
   
