@@ -53,6 +53,26 @@ proc handleNormalMode*(editor: Editor, key: Key) =
 
     case ch
     of 'i': editor.mode = modeInsert
+    of 'a': 
+      editor.mode = modeInsert
+      let line = editor.buffer.getLine(editor.cursorRow)
+      if editor.cursorCol < line.len:
+        editor.cursorCol += 1
+    of 'A':
+      editor.mode = modeInsert
+      editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
+    of 'o':
+      editor.mode = modeInsert
+      let newRow = editor.cursorRow + 1
+      editor.pushUndo(uaInsertLine, newRow, 0)
+      editor.buffer.insertLine(newRow, "")
+      editor.cursorRow = newRow
+      editor.cursorCol = 0
+    of 'O':
+      editor.mode = modeInsert
+      editor.pushUndo(uaInsertLine, editor.cursorRow, 0)
+      editor.buffer.insertLine(editor.cursorRow, "")
+      editor.cursorCol = 0
     of 'h': editor.cursorCol = max(0, editor.cursorCol - 1)
     of 'j': editor.cursorRow += 1
     of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
