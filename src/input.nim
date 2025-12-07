@@ -52,6 +52,15 @@ proc handleNormalMode*(editor: Editor, key: Key) =
       editor.ensureCursorVisible()
       return
 
+    if ch in {'0'..'9'}:
+      if ch == '0' and editor.count == 0:
+        editor.cursorCol = 0
+        editor.clampCursor()
+        editor.ensureCursorVisible()
+        return
+      
+      editor.count = editor.count * 10 + (ch.ord - '0'.ord)
+      return
 
     case ch
     of 'i': editor.mode = modeInsert
@@ -112,16 +121,6 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of ':':
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
-    of '/':
-      editor.mode = modeSearch
-      editor.searchBuffer = ""
-      return
-    of 'n':
-      if editor.searchMatches.len > 0:
-        editor.searchIndex = (editor.searchIndex + 1) mod editor.searchMatches.len
-        let (r, c) = editor.searchMatches[editor.searchIndex]
-        editor.cursorRow = r
-        editor.cursorCol = c
     of 'x':
       let line = editor.buffer.getLine(editor.cursorRow)
       if editor.cursorCol < line.len:
@@ -190,42 +189,6 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":wq" or cmd == ":x":
       discard editor.buffer.save()
       editor.running = false
-    elif cmd.startsWith(":%s/"):
-  let body = cmd[4..^1] 
-  let parts = body.split("/")
-  if parts.len >= 2:
-    let pat = parts[0]
-    let repl = parts[1]
-    let global = parts.len >= 3 and parts[2] == "g"
-
-    for i in 0 ..< editor.buffer.lines.len:
-      if global:
-        editor.buffer.lines[i] = editor.buffer.lines[i].replace(pat, repl)
-      else:
-        let idx = editor.buffer.lines[i].find(pat)
-        if idx != -1:
-          editor.buffer.lines[i] =
-            editor.buffer.lines[i].replace(pat, repl, 1)
-
-    editor.cmdBuffer = ":s done"
-    elif cmd.startsWith(":%s/"):
-      let body = cmd[4..^1] 
-      let parts = body.split("/")
-      if parts.len >= 2:
-        let pat = parts[0]
-        let repl = parts[1]
-        let global = parts.len >= 3 and parts[2] == "g"
-
-        for i in 0 ..< editor.buffer.lines.len:
-          if global:
-            editor.buffer.lines[i] = editor.buffer.lines[i].replace(pat, repl)
-          else:
-            let idx = editor.buffer.lines[i].find(pat)
-            if idx != -1:
-              editor.buffer.lines[i] =
-                editor.buffer.lines[i].replace(pat, repl, 1)
-
-        editor.cmdBuffer = ":s done"
     elif cmd == ":set number" or cmd == ":set nu":
       editor.showLineNumbers = true
     elif cmd == ":set nonumber" or cmd == ":set nonu":
@@ -328,34 +291,3 @@ proc handleInsertMode*(editor: Editor, key: Key) =
   editor.clampCursor()
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
-
-proc handleSearchMode*(editor: Editor, key: Key) =
-  if key == Key.Enter:
-    editor.searchMatches.setLen(0)
-
-    for row, line in editor.buffer.lines.pairs:
-      var idx = line.find(editor.searchBuffer)
-      while idx != -1:
-        editor.searchMatches.add((row, idx))
-        idx = line.find(editor.searchBuffer, idx + 1)
-
-    if editor.searchMatches.len > 0:
-      editor.searchIndex = 0
-      let (r, c) = editor.searchMatches[0]
-      editor.cursorRow = r
-      editor.cursorCol = c
-
-    editor.mode = modeNormal
-    return
-
-  elif key == Key.Escape:
-    editor.mode = modeNormal
-    return
-
-  elif key == Key.Backspace:
-    if editor.searchBuffer.len > 0:
-      editor.searchBuffer.setLen(editor.searchBuffer.len - 1)
-    return
-
-  elif key.ord > 0:
-    editor.searchBuffer &= chr(key.ord)

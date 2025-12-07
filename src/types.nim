@@ -1,9 +1,11 @@
 import core/buffer
 import tui/theme, tui/syntax
+import core/buffer
+import tui/theme, tui/syntax
 
 type
   EditorMode* = enum
-    modeNormal, modeInsert, modeCommand, modeSearch
+    modeNormal, modeInsert, modeCommand
 
   UndoAction* = enum
     uaInsertChar, uaDeleteChar, uaInsertLine, uaDeleteLine, uaSetLine
@@ -32,6 +34,3 @@ type
     language*: Language
     pendingOp*: PendingOp
     count*: int
-    searchBuffer*: string
-    searchMatches*: seq[(int, int)]  
-    searchIndex*: int

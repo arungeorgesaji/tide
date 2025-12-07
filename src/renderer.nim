@@ -126,7 +126,7 @@ proc render*(editor: Editor) =
                  align(lineNum, lineNumWidth - 1))
         tb.write(lineNumWidth - 1, i, 
                  currentLineFgColor, 
-                 currentLineBgColor, "│")
+                 currentLineBgColor, "|")
       else:
         tb.write(0, i, 
                  lineNumFgColor, 
@@ -134,7 +134,7 @@ proc render*(editor: Editor) =
                  align(lineNum, lineNumWidth - 1))
         tb.write(lineNumWidth - 1, i, 
                  lineNumFgColor, 
-                 lineNumBgColor, "│")
+                 lineNumBgColor, "|")
     
     let tokens = tokenizeLine(line, editor.language)
     
@@ -171,8 +171,8 @@ proc render*(editor: Editor) =
   
   let status = case editor.mode
     of modeNormal:
-      if editor.pendingOp == opDelete: " DELETE LINE "
-      elif editor.pendingOp == opYank: " YANK LINE "
+      if editor.pendingOp == opDelete: " NORMAL "
+      elif editor.pendingOp == opYank: " NORMAL "
       else: " NORMAL "
     of modeInsert: " INSERT "
     of modeCommand: " " & editor.cmdBuffer & " "
@@ -183,9 +183,19 @@ proc render*(editor: Editor) =
     " " & $(int((editor.cursorRow + 1) / lineCount * 100)) & "%"
   else: " 0%"
   
+  let countText = if editor.count > 0: $editor.count else: ""
+  let pendingOpText = case editor.pendingOp
+    of opDelete: "d"
+    of opYank: "y"
+    else: ""
+  
   let statusWidth = status.len
   let infoText = " " & fileInfo & " "
   let positionText = " " & position & percent & " "
+  
+  var pendingText = ""
+  if countText != "" or pendingOpText != "":
+    pendingText = " " & countText & pendingOpText & " "
   
   tb.write(0, editor.screenHeight - 1, statusFg, statusBg, " ".repeat(editor.screenWidth))
   
@@ -194,9 +204,11 @@ proc render*(editor: Editor) =
   let infoStart = statusWidth
   tb.write(infoStart, editor.screenHeight - 1, statusFg, statusBg, infoText)
   
-  let posStart = editor.screenWidth - positionText.len
+  let posStart = editor.screenWidth - positionText.len - pendingText.len
   if posStart > infoStart + infoText.len:  
     tb.write(posStart, editor.screenHeight - 1, statusFg, statusBg, positionText)
+    if pendingText != "":
+      tb.write(editor.screenWidth - pendingText.len, editor.screenHeight - 1, fgBlack, bgYellow, pendingText)
   
   if editor.cursorRow >= editor.viewportRow and editor.cursorRow < editor.viewportRow + editor.screenHeight - 1:
     let y = editor.cursorRow - editor.viewportRow
@@ -218,7 +230,7 @@ proc render*(editor: Editor) =
         if editor.cursorCol < line.len:
           tb.write(cursorScreenCol, y, fgBlack, bgCyan, $ch)
         else:
-          tb.write(cursorScreenCol, y, fgCyan, currentLineBgColor, "▏")
+          tb.write(cursorScreenCol, y, fgCyan, currentLineBgColor, "|")
       of modeCommand:
         tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
 
