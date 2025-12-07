@@ -31,6 +31,7 @@ proc handleNormalMode*(editor: Editor, key: Key) =
   
   if key == Key.Escape:
     editor.pendingOp = opNone
+    editor.count = 0
     return
   
   if key.ord >= 0 and key.ord < 256:
