@@ -9,7 +9,6 @@ A Vim-like modal text editor written in Nim using the illwill terminal library.
 - **Customizable themes**
 - **Undo/Redo support**
 - **Line numbering** (toggleable)
-- **Search functionality** with match navigation
 - **Vim-style commands** and navigation
 - **Yank/paste operations**
 
@@ -48,10 +47,6 @@ A Vim-like modal text editor written in Nim using the illwill terminal library.
 - `P` - Paste above current line
 - `u` - Undo last change
 
-#### Search
-- `/` - Enter search mode
-- `n` - Jump to next search match
-
 #### Other
 - `n` - Toggle line numbers
 - `:` - Enter command mode
@@ -83,10 +78,6 @@ Commands are entered after pressing `:` in normal mode.
 - `:q!` - Force quit without saving
 - `:wq` or `:x` - Write and quit
 
-#### Search and Replace
-- `:%s/pattern/replacement/` - Replace first occurrence in each line
-- `:%s/pattern/replacement/g` - Replace all occurrences (global)
-
 #### Display Options
 - `:set number` or `:set nu` - Show line numbers
 - `:set nonumber` or `:set nonu` - Hide line numbers
@@ -104,16 +95,6 @@ Commands are entered after pressing `:` in normal mode.
 - `Backspace` - Delete character in command buffer
 - `Esc` - Cancel and return to normal mode
 - `Enter` - Execute command
-
-### Search Mode
-
-Entered by pressing `/` in normal mode.
-
-- Type search pattern
-- `Enter` - Execute search and jump to first match
-- `Backspace` - Delete character from search buffer
-- `Esc` - Cancel search and return to normal mode
-- Use `n` in normal mode to cycle through matches
 
 ## Themes
 
