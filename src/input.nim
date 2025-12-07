@@ -1,7 +1,7 @@
 import std/strutils
 import core/buffer
 import tui/[theme, syntax]
-import utils/word_navigation
+import utils/[word_navigation, count]
 import undo, types, viewpoint
 import illwill, tables
 
@@ -52,6 +52,7 @@ proc handleNormalMode*(editor: Editor, key: Key) =
       editor.ensureCursorVisible()
       return
 
+
     case ch
     of 'i': editor.mode = modeInsert
     of 'a': 
@@ -74,16 +75,30 @@ proc handleNormalMode*(editor: Editor, key: Key) =
       editor.pushUndo(uaInsertLine, editor.cursorRow, 0)
       editor.buffer.insertLine(editor.cursorRow, "")
       editor.cursorCol = 0
-    of 'h': editor.cursorCol = max(0, editor.cursorCol - 1)
-    of 'j': editor.cursorRow += 1
-    of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
-    of 'l': editor.cursorCol += 1
+    of 'h':
+      let n = editor.takeCount()
+      editor.cursorCol = max(0, editor.cursorCol - n)
+    of 'l':
+      let n = editor.takeCount()
+      editor.cursorCol += n
+    of 'j':
+      let n = editor.takeCount()
+      editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + n)
+    of 'k':
+      let n = editor.takeCount()
+      editor.cursorRow = max(0, editor.cursorRow - n)
     of 'w':
-      editor.moveWordForward()
+      let n = editor.takeCount()
+      for i in 0..<n:
+        editor.moveWordForward()
     of 'b':
-      editor.moveWordBackward()
+      let n = editor.takeCount()
+      for i in 0..<n:
+        editor.moveWordBackward()
     of 'e':
-      editor.moveToEndOfWord()
+      let n = editor.takeCount()
+      for i in 0..<n:
+        editor.moveToEndOfWord()
     of '0':
       editor.cursorCol = 0
     of '$':
@@ -97,6 +112,16 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of ':':
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
+    of '/':
+      editor.mode = modeSearch
+      editor.searchBuffer = ""
+      return
+    of 'n':
+      if editor.searchMatches.len > 0:
+        editor.searchIndex = (editor.searchIndex + 1) mod editor.searchMatches.len
+        let (r, c) = editor.searchMatches[editor.searchIndex]
+        editor.cursorRow = r
+        editor.cursorCol = c
     of 'x':
       let line = editor.buffer.getLine(editor.cursorRow)
       if editor.cursorCol < line.len:
@@ -165,6 +190,42 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":wq" or cmd == ":x":
       discard editor.buffer.save()
       editor.running = false
+    elif cmd.startsWith(":%s/"):
+  let body = cmd[4..^1] 
+  let parts = body.split("/")
+  if parts.len >= 2:
+    let pat = parts[0]
+    let repl = parts[1]
+    let global = parts.len >= 3 and parts[2] == "g"
+
+    for i in 0 ..< editor.buffer.lines.len:
+      if global:
+        editor.buffer.lines[i] = editor.buffer.lines[i].replace(pat, repl)
+      else:
+        let idx = editor.buffer.lines[i].find(pat)
+        if idx != -1:
+          editor.buffer.lines[i] =
+            editor.buffer.lines[i].replace(pat, repl, 1)
+
+    editor.cmdBuffer = ":s done"
+    elif cmd.startsWith(":%s/"):
+      let body = cmd[4..^1] 
+      let parts = body.split("/")
+      if parts.len >= 2:
+        let pat = parts[0]
+        let repl = parts[1]
+        let global = parts.len >= 3 and parts[2] == "g"
+
+        for i in 0 ..< editor.buffer.lines.len:
+          if global:
+            editor.buffer.lines[i] = editor.buffer.lines[i].replace(pat, repl)
+          else:
+            let idx = editor.buffer.lines[i].find(pat)
+            if idx != -1:
+              editor.buffer.lines[i] =
+                editor.buffer.lines[i].replace(pat, repl, 1)
+
+        editor.cmdBuffer = ":s done"
     elif cmd == ":set number" or cmd == ":set nu":
       editor.showLineNumbers = true
     elif cmd == ":set nonumber" or cmd == ":set nonu":
@@ -267,3 +328,34 @@ proc handleInsertMode*(editor: Editor, key: Key) =
   editor.clampCursor()
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
+
+proc handleSearchMode*(editor: Editor, key: Key) =
+  if key == Key.Enter:
+    editor.searchMatches.setLen(0)
+
+    for row, line in editor.buffer.lines.pairs:
+      var idx = line.find(editor.searchBuffer)
+      while idx != -1:
+        editor.searchMatches.add((row, idx))
+        idx = line.find(editor.searchBuffer, idx + 1)
+
+    if editor.searchMatches.len > 0:
+      editor.searchIndex = 0
+      let (r, c) = editor.searchMatches[0]
+      editor.cursorRow = r
+      editor.cursorCol = c
+
+    editor.mode = modeNormal
+    return
+
+  elif key == Key.Escape:
+    editor.mode = modeNormal
+    return
+
+  elif key == Key.Backspace:
+    if editor.searchBuffer.len > 0:
+      editor.searchBuffer.setLen(editor.searchBuffer.len - 1)
+    return
+
+  elif key.ord > 0:
+    editor.searchBuffer &= chr(key.ord)

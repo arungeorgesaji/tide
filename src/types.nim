@@ -3,7 +3,7 @@ import tui/theme, tui/syntax
 
 type
   EditorMode* = enum
-    modeNormal, modeInsert, modeCommand
+    modeNormal, modeInsert, modeCommand, modeSearch
 
   UndoAction* = enum
     uaInsertChar, uaDeleteChar, uaInsertLine, uaDeleteLine, uaSetLine
@@ -31,3 +31,7 @@ type
     themeManager*: ThemeManager
     language*: Language
     pendingOp*: PendingOp
+    count*: int
+    searchBuffer*: string
+    searchMatches*: seq[(int, int)]  
+    searchIndex*: int
