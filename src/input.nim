@@ -77,6 +77,16 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of 'j': editor.cursorRow += 1
     of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
     of 'l': editor.cursorCol += 1
+    of '0':
+      editor.cursorCol = 0
+    of '$':
+      editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
+    of 'g':
+      editor.cursorRow = 0
+      editor.cursorCol = 0
+    of 'G':
+      editor.cursorRow = editor.buffer.lines.high
+      editor.cursorCol = 0
     of ':':
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
