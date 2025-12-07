@@ -1,6 +1,7 @@
 import std/strutils
 import core/buffer
 import tui/[theme, syntax]
+import utils/word_navigation
 import undo, types, viewpoint
 import illwill, tables
 
@@ -77,6 +78,12 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of 'j': editor.cursorRow += 1
     of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
     of 'l': editor.cursorCol += 1
+    of 'w':
+      editor.moveWordForward()
+    of 'b':
+      editor.moveWordBackward()
+    of 'e':
+      editor.moveToEndOfWord()
     of '0':
       editor.cursorCol = 0
     of '$':
