@@ -263,6 +263,16 @@ proc handleInsertMode*(editor: Editor, key: Key) =
       editor.cursorRow -= 1
       editor.cursorCol = prevLen
       editor.buffer.deleteLine(editor.cursorRow + 1)
+  
+  of Key.Tab:
+    let spacesToInsert = editor.tabWidth - (editor.cursorCol mod editor.tabWidth)
+    let spaces = ' '.repeat(spacesToInsert)
+    
+    editor.pushUndo(uaInsertChar, editor.cursorRow, editor.cursorCol, spaces)
+    
+    for ch in spaces:
+      editor.buffer.insertChar(editor.cursorRow, editor.cursorCol, ch)
+      editor.cursorCol += 1
 
   of Key.Delete:
     let line = editor.buffer.getLine(editor.cursorRow)

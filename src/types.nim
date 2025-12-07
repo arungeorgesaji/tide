@@ -34,3 +34,4 @@ type
     language*: Language
     pendingOp*: PendingOp
     count*: int
+    tabWidth*: int = 4
