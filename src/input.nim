@@ -1,0 +1,196 @@
+proc handleNormalMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+  
+  if key == Key.Escape:
+    editor.pendingOp = opNone
+    return
+  
+  if key.ord >= 0 and key.ord < 256:
+    let ch = chr(key.ord)
+
+    if editor.pendingOp != opNone:
+      if ch == 'd' and editor.pendingOp == opDelete:
+        if editor.cursorRow < editor.buffer.lines.len:
+          editor.yankBuffer = editor.buffer.lines[editor.cursorRow]
+          editor.pushUndo(uaDeleteLine, editor.cursorRow, 0, editor.buffer.lines[editor.cursorRow])
+          editor.buffer.deleteLine(editor.cursorRow)
+          editor.cursorRow = min(editor.cursorRow, max(0, editor.buffer.lines.high))
+      elif ch == 'y' and editor.pendingOp == opYank:
+        if editor.cursorRow < editor.buffer.lines.len:
+          editor.yankBuffer = editor.buffer.lines[editor.cursorRow]
+      
+      editor.pendingOp = opNone  
+      editor.clampCursor()
+      editor.ensureCursorVisible()
+      return
+
+    case ch
+    of 'i': editor.mode = modeInsert
+    of 'h': editor.cursorCol = max(0, editor.cursorCol - 1)
+    of 'j': editor.cursorRow += 1
+    of 'k': editor.cursorRow = max(0, editor.cursorRow - 1)
+    of 'l': editor.cursorCol += 1
+    of ':':
+      editor.mode = modeCommand
+      editor.cmdBuffer = ":"
+    of 'd':
+      editor.pendingOp = opDelete  
+    of 'y':
+      editor.pendingOp = opYank    
+    of 'p':
+      if editor.yankBuffer != "":
+        let pasteRow = editor.cursorRow + 1
+        editor.pushUndo(uaInsertLine, pasteRow, 0)
+        editor.buffer.insertLine(pasteRow, editor.yankBuffer)
+        editor.cursorRow = pasteRow         
+        editor.cursorCol = 0
+    of 'P':
+      if editor.yankBuffer != "":
+        let pasteRow = editor.cursorRow
+        editor.pushUndo(uaInsertLine, pasteRow, 0)
+        editor.buffer.insertLine(pasteRow, editor.yankBuffer)
+        editor.cursorRow = pasteRow
+        editor.cursorCol = 0
+    of 'u':
+      editor.undo()
+    of 'n':  
+      editor.showLineNumbers = not editor.showLineNumbers
+    of 'q':
+      editor.running = false
+    else: discard
+  elif key == Key.Escape:
+    editor.pendingOp = opNone  
+    editor.running = false
+  elif key == Key.PageDown:
+    editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + editor.screenHeight - 2)
+  elif key == Key.PageUp:
+    editor.cursorRow = max(0, editor.cursorRow - editor.screenHeight + 2)
+
+  editor.clampCursor()
+  editor.ensureCursorVisible()
+
+proc handleCommandMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+
+  if key == Key.Enter:
+    let cmd = editor.cmdBuffer
+    if cmd == ":q" or cmd == ":q!":
+      editor.running = false
+    elif cmd == ":w":
+      if editor.buffer.save():
+        editor.cmdBuffer = ":w  (wrote)"
+      else:
+        editor.cmdBuffer = ":w  (error)"
+    elif cmd == ":wq" or cmd == ":x":
+      discard editor.buffer.save()
+      editor.running = false
+    elif cmd == ":set number" or cmd == ":set nu":
+      editor.showLineNumbers = true
+    elif cmd == ":set nonumber" or cmd == ":set nonu":
+      editor.showLineNumbers = false
+    elif cmd.startsWith(":theme "):
+      let themeName = cmd[7..^1].strip()
+      if editor.themeManager.setTheme(themeName):
+        editor.cmdBuffer = ":theme " & themeName & " (applied)"
+      else:
+        editor.cmdBuffer = ":theme (unknown theme)"
+    elif cmd == ":themes":
+      var themeList = ""
+      for name in editor.themeManager.themes.keys:
+        themeList &= name & " "
+      editor.cmdBuffer = ":themes: " & themeList
+    elif cmd == ":syntax on":
+      editor.language = detectLanguage(editor.buffer.name)
+      editor.cmdBuffer = ":syntax on (enabled)"
+    elif cmd == ":syntax off":
+      editor.language = langNone
+      editor.cmdBuffer = ":syntax off (disabled)"
+    elif cmd.startsWith(":"):
+      editor.cmdBuffer = cmd & " (unknown)"
+    editor.mode = modeNormal
+    editor.cmdBuffer = ""
+  elif key == Key.Backspace:
+    if editor.cmdBuffer.len > 1:
+      editor.cmdBuffer.setLen(editor.cmdBuffer.len - 1)
+    else:
+      editor.mode = modeNormal
+      editor.cmdBuffer = ""
+  elif key == Key.Escape:
+    editor.mode = modeNormal
+    editor.cmdBuffer = ""
+  elif key.ord > 0:
+    editor.cmdBuffer &= chr(key.ord)
+
+proc handleInsertMode(editor: Editor, key: Key) =
+  editor.handleNavigationKeys(key) 
+
+  if key in {Key.Left, Key.Right, Key.Up, Key.Down,
+             Key.Home, Key.End, Key.PageUp, Key.PageDown}:
+    return
+ 
+  case key
+  of Key.Escape:
+    editor.mode = modeNormal
+
+  of Key.Enter:
+    let line = editor.buffer.getLine(editor.cursorRow)
+    let col = min(editor.cursorCol, line.len)
+    let originalLine = line
+    editor.pushUndo(uaSetLine, editor.cursorRow, 0, originalLine)
+    editor.pushUndo(uaInsertLine, editor.cursorRow + 1, 0)
+    editor.buffer.setLine(editor.cursorRow, line[0..<col])
+    editor.buffer.insertLine(editor.cursorRow + 1, line[col..^1])
+    editor.cursorRow += 1
+    editor.cursorCol = 0
+
+  of Key.Backspace:
+    if editor.cursorCol > 0:
+      let deletedChar = editor.buffer.lines[editor.cursorRow][editor.cursorCol - 1]
+      editor.pushUndo(uaDeleteChar, editor.cursorRow, editor.cursorCol - 1, $deletedChar)
+      editor.cursorCol -= 1
+      editor.buffer.deleteChar(editor.cursorRow, editor.cursorCol)
+    elif editor.cursorRow > 0:
+      let currentLine = editor.buffer.lines[editor.cursorRow]
+      let prevLine = editor.buffer.lines[editor.cursorRow - 1]
+      editor.pushUndo(uaSetLine, editor.cursorRow - 1, 0, prevLine)
+      editor.pushUndo(uaInsertLine, editor.cursorRow, 0, currentLine)
+      let prevLen = prevLine.len
+      editor.cursorRow -= 1
+      editor.cursorCol = prevLen
+      editor.buffer.deleteLine(editor.cursorRow + 1)
+
+  else:
+    if key.ord in 32..126:  
+      let ch = chr(key.ord)
+      editor.pushUndo(uaInsertChar, editor.cursorRow, editor.cursorCol, $ch)
+      editor.buffer.insertChar(editor.cursorRow, editor.cursorCol, ch)
+      editor.cursorCol += 1
+
+  editor.clampCursor()
+  editor.ensureCursorVisible()
+  editor.buffer.dirty = true
+
+proc handleNavigationKeys(editor: Editor, key: Key) =
+  case key
+  of Key.Left:   editor.cursorCol = max(0, editor.cursorCol - 1)
+  of Key.Right:  editor.cursorCol += 1
+  of Key.Up:     editor.cursorRow = max(0, editor.cursorRow - 1)
+  of Key.Down:   editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + 1)
+  of Key.Home:   editor.cursorCol = 0
+  of Key.End:    editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
+  of Key.PageUp:   
+    editor.cursorRow = max(0, editor.cursorRow - (editor.screenHeight - 3))
+  of Key.PageDown: 
+    editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + (editor.screenHeight - 3))
+  else: return  
+
+  editor.clampCursor()
+  editor.ensureCursorVisible()
