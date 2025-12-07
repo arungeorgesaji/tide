@@ -90,6 +90,19 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of ':':
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
+    of 'x':
+      let line = editor.buffer.getLine(editor.cursorRow)
+      if editor.cursorCol < line.len:
+        let deletedChar = line[editor.cursorCol]
+        editor.pushUndo(uaDeleteChar, editor.cursorRow, editor.cursorCol, $deletedChar)
+        editor.buffer.deleteChar(editor.cursorRow, editor.cursorCol)
+    of 'X':
+      let line = editor.buffer.getLine(editor.cursorRow)
+      if editor.cursorCol > 0:
+        let deletedChar = line[editor.cursorCol - 1]
+        editor.pushUndo(uaDeleteChar, editor.cursorRow, editor.cursorCol - 1, $deletedChar)
+        editor.cursorCol -= 1
+        editor.buffer.deleteChar(editor.cursorRow, editor.cursorCol)
     of 'd':
       editor.pendingOp = opDelete  
     of 'y':
@@ -218,6 +231,23 @@ proc handleInsertMode*(editor: Editor, key: Key) =
       let prevLen = prevLine.len
       editor.cursorRow -= 1
       editor.cursorCol = prevLen
+      editor.buffer.deleteLine(editor.cursorRow + 1)
+
+  of Key.Delete:
+    let line = editor.buffer.getLine(editor.cursorRow)
+    let col = editor.cursorCol
+
+    if col < line.len:
+      let deletedChar = line[col]
+      editor.pushUndo(uaDeleteChar, editor.cursorRow, col, $deletedChar)
+      editor.buffer.deleteChar(editor.cursorRow, col)
+
+    elif editor.cursorRow < editor.buffer.lines.high:
+      let nextLine = editor.buffer.lines[editor.cursorRow + 1]
+      editor.pushUndo(uaSetLine, editor.cursorRow, 0, line)
+      editor.pushUndo(uaInsertLine, editor.cursorRow + 1, 0, nextLine)
+
+      editor.buffer.setLine(editor.cursorRow, line & nextLine)
       editor.buffer.deleteLine(editor.cursorRow + 1)
 
   else:
