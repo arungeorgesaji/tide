@@ -1,4 +1,27 @@
-proc handleNormalMode(editor: Editor, key: Key) =
+import std/strutils
+import core/buffer
+import tui/[theme, syntax]
+import undo, types, viewpoint
+import illwill, tables
+
+proc handleNavigationKeys(editor: Editor, key: Key) =
+  case key
+  of Key.Left:   editor.cursorCol = max(0, editor.cursorCol - 1)
+  of Key.Right:  editor.cursorCol += 1
+  of Key.Up:     editor.cursorRow = max(0, editor.cursorRow - 1)
+  of Key.Down:   editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + 1)
+  of Key.Home:   editor.cursorCol = 0
+  of Key.End:    editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
+  of Key.PageUp:   
+    editor.cursorRow = max(0, editor.cursorRow - (editor.screenHeight - 3))
+  of Key.PageDown: 
+    editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + (editor.screenHeight - 3))
+  else: return  
+
+  editor.clampCursor()
+  editor.ensureCursorVisible()
+
+proc handleNormalMode*(editor: Editor, key: Key) =
   editor.handleNavigationKeys(key) 
 
   if key in {Key.Left, Key.Right, Key.Up, Key.Down,
@@ -73,7 +96,7 @@ proc handleNormalMode(editor: Editor, key: Key) =
   editor.clampCursor()
   editor.ensureCursorVisible()
 
-proc handleCommandMode(editor: Editor, key: Key) =
+proc handleCommandMode*(editor: Editor, key: Key) =
   editor.handleNavigationKeys(key) 
 
   if key in {Key.Left, Key.Right, Key.Up, Key.Down,
@@ -129,7 +152,7 @@ proc handleCommandMode(editor: Editor, key: Key) =
   elif key.ord > 0:
     editor.cmdBuffer &= chr(key.ord)
 
-proc handleInsertMode(editor: Editor, key: Key) =
+proc handleInsertMode*(editor: Editor, key: Key) =
   editor.handleNavigationKeys(key) 
 
   if key in {Key.Left, Key.Right, Key.Up, Key.Down,
@@ -177,20 +200,3 @@ proc handleInsertMode(editor: Editor, key: Key) =
   editor.clampCursor()
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
-
-proc handleNavigationKeys(editor: Editor, key: Key) =
-  case key
-  of Key.Left:   editor.cursorCol = max(0, editor.cursorCol - 1)
-  of Key.Right:  editor.cursorCol += 1
-  of Key.Up:     editor.cursorRow = max(0, editor.cursorRow - 1)
-  of Key.Down:   editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + 1)
-  of Key.Home:   editor.cursorCol = 0
-  of Key.End:    editor.cursorCol = editor.buffer.getLine(editor.cursorRow).len
-  of Key.PageUp:   
-    editor.cursorRow = max(0, editor.cursorRow - (editor.screenHeight - 3))
-  of Key.PageDown: 
-    editor.cursorRow = min(editor.buffer.lines.high, editor.cursorRow + (editor.screenHeight - 3))
-  else: return  
-
-  editor.clampCursor()
-  editor.ensureCursorVisible()

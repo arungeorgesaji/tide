@@ -1,10 +1,10 @@
 import types, viewpoint
 import strutils
 
-proc pushUndo(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
+proc pushUndo*(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
   editor.undoStack.add(UndoItem(action: action, row: row, col: col, text: text))
 
-proc undo(editor: Editor) =
+proc undo*(editor: Editor) =
   if editor.undoStack.len == 0:
     return
 

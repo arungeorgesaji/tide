@@ -1,3 +1,9 @@
+import std/strutils
+import illwill
+import core/buffer
+import tui/syntax
+import types
+
 proc getClosestTermColor(r, g, b: int): ForegroundColor =
   let brightness = (r + g + b) div 3
   
@@ -76,7 +82,7 @@ proc parseNamedBgColor(colorName: string): BackgroundColor =
   of "darkgray", "darkgrey": bgBlack
   else: bgBlack
 
-proc render(editor: Editor) =
+proc render*(editor: Editor) =
   editor.screenWidth = terminalWidth()
   editor.screenHeight = terminalHeight()
   var tb = newTerminalBuffer(editor.screenWidth, editor.screenHeight)

@@ -1,8 +1,9 @@
-import undo, viewpoint, renderer, input
+import core/buffer
+import types, undo, viewpoint, renderer, input
 import tui/theme, tui/syntax
 import illwill, os, strutils
 
-proc newEditor(filepath = ""): Editor =
+proc newEditor*(filepath = ""): Editor =
   result = Editor(
     buffer: newBuffer(filepath),
     mode: modeNormal,
@@ -19,7 +20,7 @@ proc newEditor(filepath = ""): Editor =
     language: detectLanguage(filepath)
   )
 
-proc run(editor: Editor) =
+proc run*(editor: Editor) =
   illwillInit(fullscreen = true)
   hideCursor()
   defer: illwillDeinit(); showCursor()
