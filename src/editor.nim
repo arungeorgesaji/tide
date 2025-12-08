@@ -4,6 +4,8 @@ import tui/theme, tui/syntax
 import illwill, os, strutils
 
 proc newEditor*(filepath = ""): Editor =
+  ensureThemesFile() 
+
   result = Editor(
     buffer: newBuffer(filepath),
     mode: modeNormal,
@@ -16,7 +18,7 @@ proc newEditor*(filepath = ""): Editor =
     viewportRow: 0,
     viewportCol: 0,
     showLineNumbers: true,
-    themeManager: newThemeManager(getAppDir() / "themes.json"),
+    themeManager: newThemeManager(getHomeDir() / ".config" / "tide" / "themes.json"),
     language: detectLanguage(filepath)
   )
 

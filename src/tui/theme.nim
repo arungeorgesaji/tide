@@ -1,7 +1,131 @@
 import std/[json, tables, os, sequtils, strutils]
 
 const configFileName = "config.json"
-let configPath = getAppDir() / configFileName
+let configPath = getHomeDir() / ".config" / "tide" / configFileName
+
+const defaultThemesJson = """
+{
+  "terminal-dark": {
+    "name": "terminal-dark",
+    "fg": "white",
+    "bg": "black",
+    "lineNumFg": "lightGray",
+    "lineNumBg": "black",
+    "currentLineFg": "white",
+    "currentLineBg": "darkGray",
+    "statusFg": "white",
+    "statusBg": "darkGray",
+    "selectionFg": "black",
+    "selectionBg": "cyan",
+    "commentFg": "lightGray",
+    "keywordFg": "green",
+    "stringFg": "yellow",
+    "numberFg": "magenta"
+  },
+  "terminal-light": {
+    "name": "terminal-light",
+    "fg": "black",
+    "bg": "white",
+    "lineNumFg": "darkGray",
+    "lineNumBg": "white",
+    "currentLineFg": "black",
+    "currentLineBg": "lightGray",
+    "statusFg": "black",
+    "statusBg": "lightGray",
+    "selectionFg": "white",
+    "selectionBg": "blue",
+    "commentFg": "darkGray",
+    "keywordFg": "red",
+    "stringFg": "green",
+    "numberFg": "magenta"
+  },
+  "solarized-terminal": {
+    "name": "solarized-terminal",
+    "fg": "lightGray",
+    "bg": "blue",
+    "lineNumFg": "cyan",
+    "lineNumBg": "blue",
+    "currentLineFg": "white",
+    "currentLineBg": "darkBlue",
+    "statusFg": "white",
+    "statusBg": "darkBlue",
+    "selectionFg": "blue",
+    "selectionBg": "yellow",
+    "commentFg": "cyan",
+    "keywordFg": "green",
+    "stringFg": "magenta",
+    "numberFg": "cyan"
+  },
+  "monokai-terminal": {
+    "name": "monokai-terminal",
+    "fg": "white",
+    "bg": "black",
+    "lineNumFg": "darkGray",
+    "lineNumBg": "black",
+    "currentLineFg": "white",
+    "currentLineBg": "darkGray",
+    "statusFg": "white",
+    "statusBg": "darkGray",
+    "selectionFg": "black",
+    "selectionBg": "magenta",
+    "commentFg": "darkGray",
+    "keywordFg": "magenta",
+    "stringFg": "yellow",
+    "numberFg": "blue"
+  },
+  "dracula-terminal": {
+    "name": "dracula-terminal",
+    "fg": "white",
+    "bg": "black",
+    "lineNumFg": "blue",
+    "lineNumBg": "black",
+    "currentLineFg": "white",
+    "currentLineBg": "darkGray",
+    "statusFg": "white",
+    "statusBg": "darkGray",
+    "selectionFg": "black",
+    "selectionBg": "magenta",
+    "commentFg": "blue",
+    "keywordFg": "magenta",
+    "stringFg": "yellow",
+    "numberFg": "magenta"
+  },
+  "gruvbox-terminal": {
+    "name": "gruvbox-terminal",
+    "fg": "yellow",
+    "bg": "black",
+    "lineNumFg": "darkGray",
+    "lineNumBg": "black",
+    "currentLineFg": "yellow",
+    "currentLineBg": "darkGray",
+    "statusFg": "yellow",
+    "statusBg": "darkGray",
+    "selectionFg": "black",
+    "selectionBg": "yellow",
+    "commentFg": "darkGray",
+    "keywordFg": "red",
+    "stringFg": "green",
+    "numberFg": "magenta"
+  },
+  "nord-terminal": {
+    "name": "nord-terminal",
+    "fg": "white",
+    "bg": "blue",
+    "lineNumFg": "cyan",
+    "lineNumBg": "blue",
+    "currentLineFg": "white",
+    "currentLineBg": "darkBlue",
+    "statusFg": "white",
+    "statusBg": "darkBlue",
+    "selectionFg": "blue",
+    "selectionBg": "cyan",
+    "commentFg": "cyan",
+    "keywordFg": "cyan",
+    "stringFg": "green",
+    "numberFg": "yellow"
+  }
+}
+"""
 
 type
   ColorTheme* = object
@@ -16,6 +140,16 @@ type
   ThemeManager* = ref object
     currentTheme*: ColorTheme
     themes*: Table[string, ColorTheme]
+
+proc ensureThemesFile*() =
+  let configDir = getHomeDir() / ".config" / "tide"
+  let themesPath = configDir / "themes.json"
+
+  if not dirExists(configDir):
+    createDir(configDir)
+
+  if not fileExists(themesPath):
+    writeFile(themesPath, defaultThemesJson) 
 
 proc themeFromJson(name: string, node: JsonNode): ColorTheme =
   result.name = name

@@ -1,5 +1,9 @@
 # Tide
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/arungeorgesaji/tide/main/tide.gif" width="600" alt="Tide Demo">
+</p>
+
 A Vim-like modal text editor written in Nim using the illwill terminal library.
 
 ## Features
