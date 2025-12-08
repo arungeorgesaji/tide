@@ -6,6 +6,14 @@
 
 A Vim-like modal text editor written in Nim using the illwill terminal library.
 
+## Installation 
+
+You can install Tide using Nim's package manager, Nimble. Run the following command:
+
+```bash
+nimble install tide 
+```
+
 ## Features
 
 - **Modal editing** (Normal, Insert, Command, Search modes)
