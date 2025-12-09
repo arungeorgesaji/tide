@@ -184,39 +184,42 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.running = false
     elif cmd == ":w":
       if editor.buffer.save():
-        editor.cmdBuffer = ":w  (wrote)"
+        editor.statusMessage = "File saved"
       else:
-        editor.cmdBuffer = ":w  (error)"
+        editor.statusMessage = "Error saving file"
     elif cmd == ":wq" or cmd == ":x":
       discard editor.buffer.save()
       editor.running = false
     elif cmd == ":set number" or cmd == ":set nu":
       editor.showLineNumbers = true
+      editor.statusMessage = "Line numbers enabled"
     elif cmd == ":set nonumber" or cmd == ":set nonu":
       editor.showLineNumbers = false
+      editor.statusMessage = "Line numbers disabled"
     elif cmd.startsWith(":theme "):
       let themeName = cmd[7..^1].strip()
       if editor.themeManager.setTheme(themeName):
-        editor.cmdBuffer = ":theme " & themeName & " (applied)"
+        editor.statusMessage = "Theme applied: " & themeName
       else:
-        editor.cmdBuffer = ":theme (unknown theme)"
+        editor.statusMessage = "Unknown theme: " & themeName
     elif cmd == ":themes":
       var themeList = ""
       for name in editor.themeManager.themes.keys:
         themeList &= name & " "
-      editor.cmdBuffer = ":themes: " & themeList
+      editor.statusMessage = "Available themes: " & themeList
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
-      editor.cmdBuffer = ":syntax on (enabled)"
+      editor.statusMessage = "Syntax highlighting enabled"
       saveSyntaxEnabled(true)
     elif cmd == ":syntax off":
       editor.syntaxEnabled = false
       editor.language = langNone
-      editor.cmdBuffer = ":syntax off (disabled)"
+      editor.statusMessage = "Syntax highlighting disabled"
       saveSyntaxEnabled(false)
     elif cmd.startsWith(":"):
-      editor.cmdBuffer = cmd & " (unknown)"
+      editor.statusMessage = "Unknown command: " & cmd
+    
     editor.mode = modeNormal
     editor.cmdBuffer = ""
   elif key == Key.Backspace:

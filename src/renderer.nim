@@ -237,4 +237,15 @@ proc render*(editor: Editor) =
       of modeCommand:
         tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
 
+  if editor.mode == modeNormal and editor.statusMessage != "":
+    let msgStart = statusWidth + infoText.len + 2
+    let maxMsgWidth = editor.screenWidth - msgStart - positionText.len - pendingText.len - 2
+    
+    if maxMsgWidth > 10:  
+      let displayMsg = if editor.statusMessage.len > maxMsgWidth:
+                         editor.statusMessage[0..<maxMsgWidth]
+                       else:
+                         editor.statusMessage
+      tb.write(msgStart, editor.screenHeight - 1, fgYellow, statusBg, displayMsg)
+
   tb.display()

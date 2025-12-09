@@ -23,6 +23,7 @@ type
     running*: bool
     screenWidth*, screenHeight*: int
     cmdBuffer*: string
+    statusMessage*: string
     undoStack*: seq[UndoItem]      
     yankBuffer*: string
     viewportRow*: int  
