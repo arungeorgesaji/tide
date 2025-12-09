@@ -1,6 +1,7 @@
 import core/buffer
 import types, undo, viewpoint, renderer, input
-import tui/theme, tui/syntax
+import tui/[theme, syntax]
+import utils/config
 import illwill, os, strutils
 
 proc newEditor*(filepath = ""): Editor =
@@ -20,7 +21,7 @@ proc newEditor*(filepath = ""): Editor =
     showLineNumbers: true,
     themeManager: newThemeManager(getHomeDir() / ".config" / "tide" / "themes.json"),
     language: detectLanguage(filepath),
-    syntaxEnabled: true,
+    syntaxEnabled: loadSyntaxEnabled()
   )
 
 proc run*(editor: Editor) =

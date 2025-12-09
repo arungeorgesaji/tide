@@ -1,7 +1,5 @@
 import core/buffer
-import tui/theme, tui/syntax
-import core/buffer
-import tui/theme, tui/syntax
+import tui/[theme, syntax]
 
 type
   EditorMode* = enum

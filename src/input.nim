@@ -1,7 +1,7 @@
 import std/strutils
 import core/buffer
 import tui/[theme, syntax]
-import utils/[word_navigation, count]
+import utils/[word_navigation, count, config]
 import undo, types, viewpoint
 import illwill, tables
 
@@ -209,10 +209,12 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
       editor.cmdBuffer = ":syntax on (enabled)"
+      saveSyntaxEnabled(true)
     elif cmd == ":syntax off":
       editor.syntaxEnabled = false
       editor.language = langNone
       editor.cmdBuffer = ":syntax off (disabled)"
+      saveSyntaxEnabled(false)
     elif cmd.startsWith(":"):
       editor.cmdBuffer = cmd & " (unknown)"
     editor.mode = modeNormal
