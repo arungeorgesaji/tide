@@ -19,7 +19,8 @@ proc newEditor*(filepath = ""): Editor =
     viewportCol: 0,
     showLineNumbers: true,
     themeManager: newThemeManager(getHomeDir() / ".config" / "tide" / "themes.json"),
-    language: detectLanguage(filepath)
+    language: detectLanguage(filepath),
+    syntaxEnabled: true,
   )
 
 proc run*(editor: Editor) =

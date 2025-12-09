@@ -124,7 +124,10 @@ proc isKeyword(word: string, lang: Language): bool =
   else:
     return false
 
-proc tokenizeLine*(line: string, lang: Language): seq[Token] =
+proc tokenizeLine*(line: string, lang: Language, syntaxEnabled = true): seq[Token] =
+  if not syntaxEnabled:
+    return @[Token(tokenType: tokText, text: line)]
+
   var tokens: seq[Token]
   var i = 0
   let n = line.len

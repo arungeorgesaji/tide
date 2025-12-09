@@ -32,6 +32,7 @@ type
     showLineNumbers*: bool
     themeManager*: ThemeManager
     language*: Language
+    syntaxEnabled*: bool = true
     pendingOp*: PendingOp
     count*: int
     tabWidth*: int = 4

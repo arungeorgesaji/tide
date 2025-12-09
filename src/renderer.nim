@@ -136,8 +136,11 @@ proc render*(editor: Editor) =
                  lineNumFgColor, 
                  lineNumBgColor, "|")
     
-    let tokens = tokenizeLine(line, editor.language)
-    
+    let tokens = if editor.syntaxEnabled and editor.language != langNone:
+               tokenizeLine(line, editor.language, true)
+             else:
+               tokenizeLine(line, langNone, false)
+
     var col = textStartCol
     for token in tokens:
       if col >= editor.screenWidth: break

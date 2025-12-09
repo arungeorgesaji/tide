@@ -206,9 +206,11 @@ proc handleCommandMode*(editor: Editor, key: Key) =
         themeList &= name & " "
       editor.cmdBuffer = ":themes: " & themeList
     elif cmd == ":syntax on":
+      editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
       editor.cmdBuffer = ":syntax on (enabled)"
     elif cmd == ":syntax off":
+      editor.syntaxEnabled = false
       editor.language = langNone
       editor.cmdBuffer = ":syntax off (disabled)"
     elif cmd.startsWith(":"):
