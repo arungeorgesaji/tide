@@ -30,6 +30,7 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     return
   
   if key == Key.Escape:
+    editor.statusMessage = ""
     editor.pendingOp = opNone
     editor.count = 0
     return
@@ -184,24 +185,24 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.running = false
     elif cmd == ":w":
       if editor.buffer.save():
-        editor.statusMessage = "File saved"
+        editor.statusMessage = "file_saved"
       else:
-        editor.statusMessage = "Error saving file"
+        editor.statusMessage = "error_saving_file"
     elif cmd == ":wq" or cmd == ":x":
       discard editor.buffer.save()
       editor.running = false
     elif cmd == ":set number" or cmd == ":set nu":
       editor.showLineNumbers = true
-      editor.statusMessage = "Line numbers enabled"
+      editor.statusMessage = "line_numbers_enabled"
     elif cmd == ":set nonumber" or cmd == ":set nonu":
       editor.showLineNumbers = false
-      editor.statusMessage = "Line numbers disabled"
+      editor.statusMessage = "line_numbers_disabled"
     elif cmd.startsWith(":theme "):
       let themeName = cmd[7..^1].strip()
       if editor.themeManager.setTheme(themeName):
-        editor.statusMessage = "Theme applied: " & themeName
+        editor.statusMessage = "themme_applied: " & themeName
       else:
-        editor.statusMessage = "Unknown theme: " & themeName
+        editor.statusMessage = "unknown_theme: " & themeName
     elif cmd == ":themes":
       var themeList = ""
       for name in editor.themeManager.themes.keys:
@@ -210,15 +211,15 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
-      editor.statusMessage = "Syntax highlighting enabled"
+      editor.statusMessage = "syntax_highlighting_enabled"
       saveSyntaxEnabled(true)
     elif cmd == ":syntax off":
       editor.syntaxEnabled = false
       editor.language = langNone
-      editor.statusMessage = "Syntax highlighting disabled"
+      editor.statusMessage = "syntax_highlighting_disabled"
       saveSyntaxEnabled(false)
     elif cmd.startsWith(":"):
-      editor.statusMessage = "Unknown command: " & cmd
+      editor.statusMessage = "unknown_command: " & cmd
     
     editor.mode = modeNormal
     editor.cmdBuffer = ""
