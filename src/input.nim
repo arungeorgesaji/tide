@@ -204,6 +204,7 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       else:
         editor.statusMessage = "unknown_theme: " & themeName
     elif cmd == ":themes":
+      editor.popup.previewTheme = editor.themeManager.currentTheme.name
       editor.popup.mode = pmThemeSelector
       editor.popup.items = toSeq(editor.themeManager.themes.keys)
       editor.popup.selectedIndex = 0
@@ -212,6 +213,8 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.popup.scrollOffset = 0
       editor.popup.filter = ""
       editor.popup.filterCursor = 0
+      if editor.popup.items.len > 0:
+        discard editor.themeManager.setTheme(editor.popup.items[0])
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
@@ -315,9 +318,12 @@ proc handleInsertMode*(editor: Editor, key: Key) =
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
 
+
 proc handlePopupNavigation*(editor: Editor, key: Key) =
   case editor.popup.mode
   of pmThemeSelector:
+    let previousIndex = editor.popup.selectedIndex
+    
     case key
     of Key.Up:
       if editor.popup.selectedIndex > 0:
@@ -358,9 +364,13 @@ proc handlePopupNavigation*(editor: Editor, key: Key) =
       if editor.themeManager.setTheme(selectedTheme):
         editor.statusMessage = "Theme applied: " & selectedTheme
       editor.popup.visible = false
+      editor.popup.previewTheme = ""
     
     of Key.Escape:
+      if editor.popup.previewTheme != "":
+        discard editor.themeManager.setTheme(editor.popup.previewTheme)
       editor.popup.visible = false
+      editor.popup.previewTheme = ""
     
     else:
       if key.ord in 32..126:  
@@ -386,6 +396,10 @@ proc handlePopupNavigation*(editor: Editor, key: Key) =
           editor.popup.items = filteredItems
         editor.popup.selectedIndex = min(editor.popup.selectedIndex, editor.popup.items.high)
         editor.popup.scrollOffset = 0
+    
+    if previousIndex != editor.popup.selectedIndex and editor.popup.items.len > 0:
+      let previewTheme = editor.popup.items[editor.popup.selectedIndex]
+      discard editor.themeManager.setTheme(previewTheme)
   
   else:
     discard

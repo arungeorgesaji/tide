@@ -30,6 +30,7 @@ type
     title*: string
     filter*: string
     filterCursor*: int
+    previewTheme*: string
     scrollOffset*: int
 
   Editor* = ref object
