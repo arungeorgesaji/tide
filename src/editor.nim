@@ -32,10 +32,14 @@ proc run*(editor: Editor) =
   while editor.running:
     editor.render()
     let key = getKey()
+
     if key != Key.None:
-      case editor.mode
-      of modeNormal: editor.handleNormalMode(key)
-      of modeInsert: editor.handleInsertMode(key)
-      of modeCommand: editor.handleCommandMode(key)
+      if editor.popup.visible:
+        editor.handlePopupNavigation(key)
+      else: 
+        case editor.mode
+        of modeNormal: editor.handleNormalMode(key)
+        of modeInsert: editor.handleInsertMode(key)
+        of modeCommand: editor.handleCommandMode(key)
     else:
       sleep(10)

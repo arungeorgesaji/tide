@@ -16,6 +16,22 @@ type
   PendingOp* = enum
     opNone, opDelete, opYank
 
+  PopupMode* = enum
+    pmNone
+    pmThemeSelector
+    pmFileBrowser
+    pmSearch
+
+  Popup* = object
+    mode*: PopupMode
+    items*: seq[string]
+    selectedIndex*: int
+    visible*: bool
+    title*: string
+    filter*: string
+    filterCursor*: int
+    scrollOffset*: int
+
   Editor* = ref object
     buffer*: Buffer
     mode*: EditorMode
@@ -33,5 +49,6 @@ type
     language*: Language
     syntaxEnabled*: bool = true
     pendingOp*: PendingOp
+    popup*: Popup
     count*: int
     tabWidth*: int = 4

@@ -1,4 +1,4 @@
-import std/strutils
+import std/[sequtils, strutils]
 import core/buffer
 import tui/[theme, syntax]
 import utils/[word_navigation, count, config]
@@ -204,10 +204,14 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       else:
         editor.statusMessage = "unknown_theme: " & themeName
     elif cmd == ":themes":
-      var themeList = ""
-      for name in editor.themeManager.themes.keys:
-        themeList &= name & " "
-      editor.statusMessage = "Available themes: " & themeList
+      editor.popup.mode = pmThemeSelector
+      editor.popup.items = toSeq(editor.themeManager.themes.keys)
+      editor.popup.selectedIndex = 0
+      editor.popup.visible = true
+      editor.popup.title = "Select Theme"
+      editor.popup.scrollOffset = 0
+      editor.popup.filter = ""
+      editor.popup.filterCursor = 0
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
@@ -310,3 +314,78 @@ proc handleInsertMode*(editor: Editor, key: Key) =
   editor.clampCursor()
   editor.ensureCursorVisible()
   editor.buffer.dirty = true
+
+proc handlePopupNavigation*(editor: Editor, key: Key) =
+  case editor.popup.mode
+  of pmThemeSelector:
+    case key
+    of Key.Up:
+      if editor.popup.selectedIndex > 0:
+        dec(editor.popup.selectedIndex)
+        if editor.popup.selectedIndex < editor.popup.scrollOffset:
+          editor.popup.scrollOffset = editor.popup.selectedIndex
+    
+    of Key.Down:
+      if editor.popup.selectedIndex < editor.popup.items.high:
+        inc(editor.popup.selectedIndex)
+        let visibleHeight = min(16, editor.screenHeight - 8) - 4
+        if editor.popup.selectedIndex >= editor.popup.scrollOffset + visibleHeight:
+          editor.popup.scrollOffset = editor.popup.selectedIndex - visibleHeight + 1
+    
+    of Key.PageUp:
+      editor.popup.selectedIndex = max(0, editor.popup.selectedIndex - 10)
+      if editor.popup.selectedIndex < editor.popup.scrollOffset:
+        editor.popup.scrollOffset = max(0, editor.popup.selectedIndex)
+    
+    of Key.PageDown:
+      editor.popup.selectedIndex = min(editor.popup.items.high, editor.popup.selectedIndex + 10)
+      let visibleHeight = min(16, editor.screenHeight - 8) - 4
+      if editor.popup.selectedIndex >= editor.popup.scrollOffset + visibleHeight:
+        editor.popup.scrollOffset = min(editor.popup.items.high - visibleHeight + 1, 
+                                         editor.popup.selectedIndex - visibleHeight + 1)
+    
+    of Key.Home:
+      editor.popup.selectedIndex = 0
+      editor.popup.scrollOffset = 0
+    
+    of Key.End:
+      editor.popup.selectedIndex = editor.popup.items.high
+      let visibleHeight = min(16, editor.screenHeight - 8) - 4
+      editor.popup.scrollOffset = max(0, editor.popup.items.high - visibleHeight + 1)
+    
+    of Key.Enter:
+      let selectedTheme = editor.popup.items[editor.popup.selectedIndex]
+      if editor.themeManager.setTheme(selectedTheme):
+        editor.statusMessage = "Theme applied: " & selectedTheme
+      editor.popup.visible = false
+    
+    of Key.Escape:
+      editor.popup.visible = false
+    
+    else:
+      if key.ord in 32..126:  
+        let ch = chr(key.ord)
+        editor.popup.filter &= ch
+        var filteredItems: seq[string]
+        for themeName in toSeq(editor.themeManager.themes.keys):
+          if themeName.toLowerAscii().contains(editor.popup.filter.toLowerAscii()):
+            filteredItems.add(themeName)
+        editor.popup.items = filteredItems
+        editor.popup.selectedIndex = min(editor.popup.selectedIndex, filteredItems.high)
+        editor.popup.scrollOffset = 0
+      
+      elif key == Key.Backspace and editor.popup.filter.len > 0:
+        editor.popup.filter.setLen(editor.popup.filter.len - 1)
+        if editor.popup.filter == "":
+          editor.popup.items = toSeq(editor.themeManager.themes.keys)
+        else:
+          var filteredItems: seq[string]
+          for themeName in toSeq(editor.themeManager.themes.keys):
+            if themeName.toLowerAscii().contains(editor.popup.filter.toLowerAscii()):
+              filteredItems.add(themeName)
+          editor.popup.items = filteredItems
+        editor.popup.selectedIndex = min(editor.popup.selectedIndex, editor.popup.items.high)
+        editor.popup.scrollOffset = 0
+  
+  else:
+    discard
