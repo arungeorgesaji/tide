@@ -1,8 +1,31 @@
 import std/strutils
 import illwill
 import core/buffer
-import tui/syntax
+import tui/[syntax, theme]
 import types
+
+type
+  RenderContext = object
+    tb: TerminalBuffer
+    editor: Editor
+    theme: ColorTheme
+    lineNumWidth: int
+    textStartCol: int
+    minimapX: int
+    minimapWidth: int
+    hasMinimap: bool
+    bgColor: BackgroundColor
+    fgColor: ForegroundColor
+    lineNumFgColor: ForegroundColor
+    lineNumBgColor: BackgroundColor
+    currentLineFgColor: ForegroundColor
+    currentLineBgColor: BackgroundColor
+    statusFg: ForegroundColor
+    statusBg: BackgroundColor
+    commentFgColor: ForegroundColor
+    keywordFgColor: ForegroundColor
+    stringFgColor: ForegroundColor
+    numberFgColor: ForegroundColor
 
 proc getClosestTermColor(r, g, b: int): ForegroundColor =
   let brightness = (r + g + b) div 3
@@ -132,199 +155,256 @@ proc renderPopup(editor: Editor, tb: var TerminalBuffer) =
   else:
     discard
 
-proc render*(editor: Editor) =
-  editor.screenWidth = terminalWidth()
-  editor.screenHeight = terminalHeight()
-  var tb = newTerminalBuffer(editor.screenWidth, editor.screenHeight)
-  
+proc initRenderContext(editor: Editor): RenderContext =
   let theme = editor.themeManager.currentTheme
   let lineCount = editor.buffer.getLineCount()
   let lineNumWidth = if editor.showLineNumbers: max(4, ($lineCount).len + 1) else: 0
-  
-  let bgColor = parseNamedBgColor(theme.bg)
-  let fgColor = parseNamedColor(theme.fg)
-  let lineNumFgColor = parseNamedColor(theme.lineNumFg)
-  let lineNumBgColor = parseNamedBgColor(theme.lineNumBg)
-  let currentLineFgColor = parseNamedColor(theme.currentLineFg)
-  let currentLineBgColor = parseNamedBgColor(theme.currentLineBg)
-  let statusFg = parseNamedColor(theme.statusFg)
-  let statusBg = parseNamedBgColor(theme.statusBg)
-  
-  let commentFgColor = parseNamedColor(theme.commentFg)
-  let keywordFgColor = parseNamedColor(theme.keywordFg)
-  let stringFgColor = parseNamedColor(theme.stringFg)
-  let numberFgColor = parseNamedColor(theme.numberFg)
-
   let minimapWidth = 12
   let hasMinimap = editor.minimapEnabled and editor.screenWidth > minimapWidth + 20
-  let minimapX = editor.screenWidth - minimapWidth
-  let minimapHeight = editor.screenHeight - 1
   
-  for i in 0..<editor.screenHeight - 1:
-    tb.write(0, i, fgColor, bgColor, " ".repeat(editor.screenWidth))
+  result = RenderContext(
+    tb: newTerminalBuffer(editor.screenWidth, editor.screenHeight),
+    editor: editor,
+    theme: theme,
+    lineNumWidth: lineNumWidth,
+    textStartCol: if editor.showLineNumbers: lineNumWidth else: 0,
+    minimapX: editor.screenWidth - minimapWidth,
+    minimapWidth: minimapWidth,
+    hasMinimap: hasMinimap,
+    bgColor: parseNamedBgColor(theme.bg),
+    fgColor: parseNamedColor(theme.fg),
+    lineNumFgColor: parseNamedColor(theme.lineNumFg),
+    lineNumBgColor: parseNamedBgColor(theme.lineNumBg),
+    currentLineFgColor: parseNamedColor(theme.currentLineFg),
+    currentLineBgColor: parseNamedBgColor(theme.currentLineBg),
+    statusFg: parseNamedColor(theme.statusFg),
+    statusBg: parseNamedBgColor(theme.statusBg),
+    commentFgColor: parseNamedColor(theme.commentFg),
+    keywordFgColor: parseNamedColor(theme.keywordFg),
+    stringFgColor: parseNamedColor(theme.stringFg),
+    numberFgColor: parseNamedColor(theme.numberFg)
+  )
+
+proc clearScreen(ctx: var RenderContext) =
+  for i in 0..<ctx.editor.screenHeight - 1:
+    ctx.tb.write(0, i, ctx.fgColor, ctx.bgColor, " ".repeat(ctx.editor.screenWidth))
+
+proc renderLineNumber(ctx: var RenderContext, lineIdx, screenRow: int) =
+  if not ctx.editor.showLineNumbers:
+    return
+    
+  let lineNum = $(lineIdx + 1)
+  let isCurrentLine = (lineIdx == ctx.editor.cursorRow)
   
-  for i in 0..<min(editor.screenHeight - 1, lineCount - editor.viewportRow):
-    let lineIdx = editor.viewportRow + i
-    let line = editor.buffer.getLine(lineIdx)
-    
-    let textStartCol = if editor.showLineNumbers: lineNumWidth else: 0
-    let maxTextWidth = editor.screenWidth - textStartCol - 1
-    
-    if editor.showLineNumbers:
-      let lineNum = $(lineIdx + 1)
-      let isCurrentLine = (lineIdx == editor.cursorRow)
-      
-      if isCurrentLine:
-        tb.write(0, i, 
-                 currentLineFgColor, 
-                 currentLineBgColor, 
-                 align(lineNum, lineNumWidth - 1))
-        tb.write(lineNumWidth - 1, i, 
-                 currentLineFgColor, 
-                 currentLineBgColor, "|")
-      else:
-        tb.write(0, i, 
-                 lineNumFgColor, 
-                 lineNumBgColor, 
-                 align(lineNum, lineNumWidth - 1))
-        tb.write(lineNumWidth - 1, i, 
-                 lineNumFgColor, 
-                 lineNumBgColor, "|")
-    
-    let tokens = if editor.syntaxEnabled and editor.language != langNone:
-               tokenizeLine(line, editor.language, true)
-             else:
-               tokenizeLine(line, langNone, false)
+  if isCurrentLine:
+    ctx.tb.write(0, screenRow, 
+                 ctx.currentLineFgColor, 
+                 ctx.currentLineBgColor, 
+                 align(lineNum, ctx.lineNumWidth - 1))
+    ctx.tb.write(ctx.lineNumWidth - 1, screenRow, 
+                 ctx.currentLineFgColor, 
+                 ctx.currentLineBgColor, "|")
+  else:
+    ctx.tb.write(0, screenRow, 
+                 ctx.lineNumFgColor, 
+                 ctx.lineNumBgColor, 
+                 align(lineNum, ctx.lineNumWidth - 1))
+    ctx.tb.write(ctx.lineNumWidth - 1, screenRow, 
+                 ctx.lineNumFgColor, 
+                 ctx.lineNumBgColor, "|")
 
-    var col = textStartCol
+proc getTokenColor(ctx: RenderContext, tokenType: TokenType): ForegroundColor =
+  case tokenType
+  of tokKeyword: ctx.keywordFgColor
+  of tokString: ctx.stringFgColor
+  of tokNumber: ctx.numberFgColor
+  of tokComment: ctx.commentFgColor
+  of tokOperator: ctx.keywordFgColor
+  of tokType: ctx.keywordFgColor
+  of tokFunction: ctx.stringFgColor
+  else: ctx.fgColor
 
-    if editor.mode == modeDiff:
-      let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
-      let diffColor = if line.startsWith("+"):
-                        parseNamedColor(theme.diffAdded)
-                      elif line.startsWith("-"):
-                        parseNamedColor(theme.diffRemoved)
-                      elif line.startsWith("~"):
-                        parseNamedColor(theme.diffModified)
-                      else:
-                        parseNamedColor(theme.diffNormal)
-      
-      for ch in line:
-        if col >= editor.screenWidth: break
-        if col >= textStartCol:
-          tb.write(col, i, diffColor, lineBgColor, $ch)
-        inc(col)
-    else:
-      for token in tokens:
-        if col >= editor.screenWidth: break
-        
-        let tokenColor = case token.tokenType
-          of tokKeyword: keywordFgColor
-          of tokString: stringFgColor
-          of tokNumber: numberFgColor
-          of tokComment: commentFgColor
-          of tokOperator: keywordFgColor
-          of tokType: keywordFgColor
-          of tokFunction: stringFgColor
-          else: fgColor
-        
-        let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
-        
-        for ch in token.text:
-          if col >= editor.screenWidth: break
-          if col >= textStartCol:  
-            tb.write(col, i, tokenColor, lineBgColor, $ch)
-          inc(col)
+proc renderDiffLine(ctx: var RenderContext, line: string, lineIdx, screenRow: int) =
+  let lineBgColor = if lineIdx == ctx.editor.cursorRow: ctx.currentLineBgColor else: ctx.bgColor
+  let diffColor = if line.startsWith("+"):
+                    parseNamedColor(ctx.theme.diffAdded)
+                  elif line.startsWith("-"):
+                    parseNamedColor(ctx.theme.diffRemoved)
+                  elif line.startsWith("~"):
+                    parseNamedColor(ctx.theme.diffModified)
+                  else:
+                    parseNamedColor(ctx.theme.diffNormal)
+  
+  var col = ctx.textStartCol
+  for ch in line:
+    if col >= ctx.editor.screenWidth: break
+    if col >= ctx.textStartCol:
+      ctx.tb.write(col, screenRow, diffColor, lineBgColor, $ch)
+    inc(col)
+  
+  while col < ctx.editor.screenWidth:
+    ctx.tb.write(col, screenRow, ctx.fgColor, lineBgColor, " ")
+    inc(col)
+
+proc renderNormalLine(ctx: var RenderContext, line: string, lineIdx, screenRow: int) =
+  let tokens = if ctx.editor.syntaxEnabled and ctx.editor.language != langNone:
+                 tokenizeLine(line, ctx.editor.language, true)
+               else:
+                 tokenizeLine(line, langNone, false)
+  
+  let lineBgColor = if lineIdx == ctx.editor.cursorRow: ctx.currentLineBgColor else: ctx.bgColor
+  var col = ctx.textStartCol
+  
+  for token in tokens:
+    if col >= ctx.editor.screenWidth: break
     
-    while col < editor.screenWidth:
-      let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
-      tb.write(col, i, fgColor, lineBgColor, " ")
+    let tokenColor = ctx.getTokenColor(token.tokenType)
+    
+    for ch in token.text:
+      if col >= ctx.editor.screenWidth: break
+      if col >= ctx.textStartCol:
+        ctx.tb.write(col, screenRow, tokenColor, lineBgColor, $ch)
       inc(col)
+  
+  while col < ctx.editor.screenWidth:
+    ctx.tb.write(col, screenRow, ctx.fgColor, lineBgColor, " ")
+    inc(col)
 
-  for i in (lineCount - editor.viewportRow)..<(editor.screenHeight - 1):
-    let textStartCol = if editor.showLineNumbers: lineNumWidth else: 0
-    tb.write(textStartCol, i, lineNumFgColor, bgColor, "~")
+proc renderTextLine(ctx: var RenderContext, lineIdx, screenRow: int) =
+  let line = ctx.editor.buffer.getLine(lineIdx)
   
-  let status = case editor.mode
-    of modeNormal:
-      if editor.pendingOp == opDelete: " NORMAL "
-      elif editor.pendingOp == opYank: " NORMAL "
-      else: " NORMAL "
-    of modeInsert: " INSERT "
-    of modeCommand: " " & editor.cmdBuffer & " "
-    of modeDiff: " DIFF "
+  ctx.renderLineNumber(lineIdx, screenRow)
   
-  let fileInfo = if editor.buffer.dirty: "[+] " & editor.buffer.name else: editor.buffer.name
-  let position = "Ln " & $(editor.cursorRow + 1) & ", Col " & $(editor.cursorCol + 1)
-  let percent = if lineCount > 0: 
+  if ctx.editor.mode == modeDiff:
+    ctx.renderDiffLine(line, lineIdx, screenRow)
+  else:
+    ctx.renderNormalLine(line, lineIdx, screenRow)
+
+proc renderEmptyLines(ctx: var RenderContext, startRow: int) =
+  for i in startRow..<(ctx.editor.screenHeight - 1):
+    ctx.tb.write(ctx.textStartCol, i, ctx.lineNumFgColor, ctx.bgColor, "~")
+
+proc buildStatusText(editor: Editor): string =
+  case editor.mode
+  of modeNormal:
+    " NORMAL "
+  of modeInsert:
+    " INSERT "
+  of modeCommand:
+    " " & editor.cmdBuffer & " "
+  of modeDiff:
+    " DIFF "
+
+proc buildFileInfoText(editor: Editor): string =
+  if editor.buffer.dirty:
+    "[+] " & editor.buffer.name
+  else:
+    editor.buffer.name
+
+proc buildPositionText(editor: Editor): string =
+  let lineCount = editor.buffer.getLineCount()
+  let percent = if lineCount > 0:
     " " & $(int((editor.cursorRow + 1) / lineCount * 100)) & "%"
-  else: " 0%"
-  
+  else:
+    " 0%"
+  " Ln " & $(editor.cursorRow + 1) & ", Col " & $(editor.cursorCol + 1) & percent & " "
+
+proc buildPendingText(editor: Editor): string =
   let countText = if editor.count > 0: $editor.count else: ""
   let pendingOpText = case editor.pendingOp
     of opDelete: "d"
     of opYank: "y"
     else: ""
   
-  let statusWidth = status.len
-  let infoText = " " & fileInfo & " "
-  let positionText = " " & position & percent & " "
-  
-  var pendingText = ""
   if countText != "" or pendingOpText != "":
-    pendingText = " " & countText & pendingOpText & " "
-  
-  tb.write(0, editor.screenHeight - 1, statusFg, statusBg, " ".repeat(editor.screenWidth))
-  
-  tb.write(0, editor.screenHeight - 1, statusFg, statusBg, status)
-  
-  let infoStart = statusWidth
-  tb.write(infoStart, editor.screenHeight - 1, statusFg, statusBg, infoText)
-  
-  let posStart = editor.screenWidth - positionText.len - pendingText.len
-  if posStart > infoStart + infoText.len:  
-    tb.write(posStart, editor.screenHeight - 1, statusFg, statusBg, positionText)
-    if pendingText != "":
-      tb.write(editor.screenWidth - pendingText.len, editor.screenHeight - 1, fgBlack, bgYellow, pendingText)
-  
-  if editor.cursorRow >= editor.viewportRow and editor.cursorRow < editor.viewportRow + editor.screenHeight - 1:
-    let y = editor.cursorRow - editor.viewportRow
-    let line = editor.buffer.getLine(editor.cursorRow)
-    
-    let cursorScreenCol = 
-      if editor.showLineNumbers:
-        lineNumWidth + (editor.cursorCol - editor.viewportCol)
-      else:
-        editor.cursorCol - editor.viewportCol
-    
-    if cursorScreenCol >= 0 and cursorScreenCol < editor.screenWidth:
-      let ch = if editor.cursorCol < line.len: line[editor.cursorCol] else: ' '
-      
-      case editor.mode
-      of modeNormal:
-        tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
-      of modeInsert:
-        if editor.cursorCol < line.len:
-          tb.write(cursorScreenCol, y, fgBlack, bgCyan, $ch)
-        else:
-          tb.write(cursorScreenCol, y, fgCyan, currentLineBgColor, "|")
-      of modeCommand:
-        tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
-      of modeDiff:
-        tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
+    " " & countText & pendingOpText & " "
+  else:
+    ""
 
-  if editor.mode == modeNormal and editor.statusMessage != "":
-    let msgStart = statusWidth + infoText.len + 2
-    let maxMsgWidth = editor.screenWidth - msgStart - positionText.len - pendingText.len - 2
+proc renderStatusBar(ctx: var RenderContext) =
+  let status = buildStatusText(ctx.editor)
+  let fileInfo = " " & buildFileInfoText(ctx.editor) & " "
+  let position = buildPositionText(ctx.editor)
+  let pending = buildPendingText(ctx.editor)
+  
+  let statusY = ctx.editor.screenHeight - 1
+  
+  ctx.tb.write(0, statusY, ctx.statusFg, ctx.statusBg, " ".repeat(ctx.editor.screenWidth))
+  
+  ctx.tb.write(0, statusY, ctx.statusFg, ctx.statusBg, status)
+  
+  let infoStart = status.len
+  ctx.tb.write(infoStart, statusY, ctx.statusFg, ctx.statusBg, fileInfo)
+  
+  let posStart = ctx.editor.screenWidth - position.len - pending.len
+  if posStart > infoStart + fileInfo.len:
+    ctx.tb.write(posStart, statusY, ctx.statusFg, ctx.statusBg, position)
+    if pending != "":
+      ctx.tb.write(ctx.editor.screenWidth - pending.len, statusY, fgBlack, bgYellow, pending)
+  
+  if ctx.editor.mode == modeNormal and ctx.editor.statusMessage != "":
+    let msgStart = status.len + fileInfo.len + 2
+    let maxMsgWidth = ctx.editor.screenWidth - msgStart - position.len - pending.len - 2
     
-    if maxMsgWidth > 10:  
-      let displayMsg = if editor.statusMessage.len > maxMsgWidth:
-                         editor.statusMessage[0..<maxMsgWidth]
+    if maxMsgWidth > 10:
+      let displayMsg = if ctx.editor.statusMessage.len > maxMsgWidth:
+                         ctx.editor.statusMessage[0..<maxMsgWidth]
                        else:
-                         editor.statusMessage
-      tb.write(msgStart, editor.screenHeight - 1, fgYellow, statusBg, displayMsg)
+                         ctx.editor.statusMessage
+      ctx.tb.write(msgStart, statusY, fgYellow, ctx.statusBg, displayMsg)
 
+proc renderCursor(ctx: var RenderContext) =
+  if ctx.editor.cursorRow < ctx.editor.viewportRow or 
+     ctx.editor.cursorRow >= ctx.editor.viewportRow + ctx.editor.screenHeight - 1:
+    return
+  
+  let y = ctx.editor.cursorRow - ctx.editor.viewportRow
+  let line = ctx.editor.buffer.getLine(ctx.editor.cursorRow)
+  
+  let cursorScreenCol = 
+    if ctx.editor.showLineNumbers:
+      ctx.lineNumWidth + (ctx.editor.cursorCol - ctx.editor.viewportCol)
+    else:
+      ctx.editor.cursorCol - ctx.editor.viewportCol
+  
+  if cursorScreenCol < 0 or cursorScreenCol >= ctx.editor.screenWidth:
+    return
+  
+  let ch = if ctx.editor.cursorCol < line.len: line[ctx.editor.cursorCol] else: ' '
+  
+  case ctx.editor.mode
+  of modeNormal, modeDiff:
+    ctx.tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
+  of modeInsert:
+    if ctx.editor.cursorCol < line.len:
+      ctx.tb.write(cursorScreenCol, y, fgBlack, bgCyan, $ch)
+    else:
+      ctx.tb.write(cursorScreenCol, y, fgCyan, ctx.currentLineBgColor, "|")
+  of modeCommand:
+    ctx.tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
+
+proc render*(editor: Editor) =
+  editor.screenWidth = terminalWidth()
+  editor.screenHeight = terminalHeight()
+  
+  var ctx = initRenderContext(editor)
+  
+  ctx.clearScreen()
+  
+  let lineCount = editor.buffer.getLineCount()
+  let visibleLines = min(editor.screenHeight - 1, lineCount - editor.viewportRow)
+  
+  for i in 0..<visibleLines:
+    let lineIdx = editor.viewportRow + i
+    ctx.renderTextLine(lineIdx, i)
+  
+  ctx.renderEmptyLines(lineCount - editor.viewportRow)
+  
+  ctx.renderStatusBar()
+  
+  ctx.renderCursor()
+  
   if editor.popup.visible:
-    renderPopup(editor, tb)
-
-  tb.display()
+    renderPopup(editor, ctx.tb)
+  
+  ctx.tb.display()
