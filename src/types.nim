@@ -3,7 +3,7 @@ import tui/[theme, syntax]
 
 type
   EditorMode* = enum
-    modeNormal, modeInsert, modeCommand
+    modeNormal, modeInsert, modeCommand, modeDiff
 
   UndoAction* = enum
     uaInsertChar, uaDeleteChar, uaInsertLine, uaDeleteLine, uaSetLine
@@ -53,3 +53,5 @@ type
     popup*: Popup
     count*: int
     tabWidth*: int = 4
+    diffBuffer*: seq[string]
+    diffOriginalBuffer*: seq[string]

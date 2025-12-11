@@ -192,26 +192,44 @@ proc render*(editor: Editor) =
                tokenizeLine(line, langNone, false)
 
     var col = textStartCol
-    for token in tokens:
-      if col >= editor.screenWidth: break
-      
-      let tokenColor = case token.tokenType
-        of tokKeyword: keywordFgColor
-        of tokString: stringFgColor
-        of tokNumber: numberFgColor
-        of tokComment: commentFgColor
-        of tokOperator: keywordFgColor
-        of tokType: keywordFgColor
-        of tokFunction: stringFgColor
-        else: fgColor
-      
+
+    if editor.mode == modeDiff:
       let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
+      let diffColor = if line.startsWith("+"):
+                        parseNamedColor(theme.diffAdded)
+                      elif line.startsWith("-"):
+                        parseNamedColor(theme.diffRemoved)
+                      elif line.startsWith("~"):
+                        parseNamedColor(theme.diffModified)
+                      else:
+                        parseNamedColor(theme.diffNormal)
       
-      for ch in token.text:
+      for ch in line:
         if col >= editor.screenWidth: break
-        if col >= textStartCol:  
-          tb.write(col, i, tokenColor, lineBgColor, $ch)
+        if col >= textStartCol:
+          tb.write(col, i, diffColor, lineBgColor, $ch)
         inc(col)
+    else:
+      for token in tokens:
+        if col >= editor.screenWidth: break
+        
+        let tokenColor = case token.tokenType
+          of tokKeyword: keywordFgColor
+          of tokString: stringFgColor
+          of tokNumber: numberFgColor
+          of tokComment: commentFgColor
+          of tokOperator: keywordFgColor
+          of tokType: keywordFgColor
+          of tokFunction: stringFgColor
+          else: fgColor
+        
+        let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
+        
+        for ch in token.text:
+          if col >= editor.screenWidth: break
+          if col >= textStartCol:  
+            tb.write(col, i, tokenColor, lineBgColor, $ch)
+          inc(col)
     
     while col < editor.screenWidth:
       let lineBgColor = if lineIdx == editor.cursorRow: currentLineBgColor else: bgColor
@@ -229,6 +247,7 @@ proc render*(editor: Editor) =
       else: " NORMAL "
     of modeInsert: " INSERT "
     of modeCommand: " " & editor.cmdBuffer & " "
+    of modeDiff: " DIFF "
   
   let fileInfo = if editor.buffer.dirty: "[+] " & editor.buffer.name else: editor.buffer.name
   let position = "Ln " & $(editor.cursorRow + 1) & ", Col " & $(editor.cursorCol + 1)
@@ -285,6 +304,8 @@ proc render*(editor: Editor) =
         else:
           tb.write(cursorScreenCol, y, fgCyan, currentLineBgColor, "|")
       of modeCommand:
+        tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
+      of modeDiff:
         tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
 
   if editor.mode == modeNormal and editor.statusMessage != "":

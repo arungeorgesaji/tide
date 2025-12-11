@@ -1,7 +1,7 @@
 import std/[sequtils, strutils]
 import core/buffer
 import tui/[theme, syntax]
-import utils/[word_navigation, count, config]
+import utils/[word_navigation, count, config, diff]
 import undo, types, viewpoint
 import illwill, tables
 
@@ -191,6 +191,25 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":wq" or cmd == ":x":
       discard editor.buffer.save()
       editor.running = false
+    elif cmd.startsWith(":diff "):
+      let parts = cmd.split(" ")
+      if parts.len == 3:
+        let fileA = parts[1]
+        let fileB = parts[2]
+        let a = readFile(fileA).splitLines()
+        let b = readFile(fileB).splitLines()
+        editor.diffOriginalBuffer = editor.buffer.lines
+        editor.diffBuffer = computeDiff(a, b)
+        editor.buffer.lines = editor.diffBuffer
+        editor.mode = modeDiff
+        editor.statusMessage = "diff mode enabled"
+      else:
+        editor.statusMessage = "usage: :diff file1 file2"
+    elif cmd == ":nodiff":
+      if editor.mode == modeDiff:
+        editor.buffer.lines = editor.diffOriginalBuffer
+        editor.mode = modeNormal
+        editor.statusMessage = "diff mode disabled"
     elif cmd == ":set number" or cmd == ":set nu":
       editor.showLineNumbers = true
       editor.statusMessage = "line_numbers_enabled"
@@ -243,6 +262,11 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     editor.cmdBuffer &= chr(key.ord)
 
 proc handleInsertMode*(editor: Editor, key: Key) =
+  if editor.mode == modeDiff:
+    editor.statusMessage = "cannot edit in diff mode"
+    editor.mode = modeNormal
+    return
+
   editor.handleNavigationKeys(key) 
 
   if key in {Key.Left, Key.Right, Key.Up, Key.Down,

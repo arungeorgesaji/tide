@@ -18,8 +18,13 @@ const defaultThemesJson = """
     "commentFg": "lightGray",
     "keywordFg": "green",
     "stringFg": "yellow",
-    "numberFg": "magenta"
+    "numberFg": "magenta",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   },
+
   "terminal-light": {
     "name": "terminal-light",
     "fg": "black",
@@ -35,8 +40,13 @@ const defaultThemesJson = """
     "commentFg": "darkGray",
     "keywordFg": "red",
     "stringFg": "green",
-    "numberFg": "magenta"
+    "numberFg": "magenta",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "black"
   },
+
   "solarized-terminal": {
     "name": "solarized-terminal",
     "fg": "lightGray",
@@ -52,8 +62,13 @@ const defaultThemesJson = """
     "commentFg": "cyan",
     "keywordFg": "green",
     "stringFg": "magenta",
-    "numberFg": "cyan"
+    "numberFg": "cyan",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   },
+
   "monokai-terminal": {
     "name": "monokai-terminal",
     "fg": "white",
@@ -69,8 +84,13 @@ const defaultThemesJson = """
     "commentFg": "darkGray",
     "keywordFg": "magenta",
     "stringFg": "yellow",
-    "numberFg": "blue"
+    "numberFg": "blue",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   },
+
   "dracula-terminal": {
     "name": "dracula-terminal",
     "fg": "white",
@@ -86,8 +106,13 @@ const defaultThemesJson = """
     "commentFg": "blue",
     "keywordFg": "magenta",
     "stringFg": "yellow",
-    "numberFg": "magenta"
+    "numberFg": "magenta",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   },
+
   "gruvbox-terminal": {
     "name": "gruvbox-terminal",
     "fg": "yellow",
@@ -103,8 +128,13 @@ const defaultThemesJson = """
     "commentFg": "darkGray",
     "keywordFg": "red",
     "stringFg": "green",
-    "numberFg": "magenta"
+    "numberFg": "magenta",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   },
+
   "nord-terminal": {
     "name": "nord-terminal",
     "fg": "white",
@@ -120,7 +150,11 @@ const defaultThemesJson = """
     "commentFg": "cyan",
     "keywordFg": "cyan",
     "stringFg": "green",
-    "numberFg": "yellow"
+    "numberFg": "yellow",
+    "diffAdded": "green",
+    "diffRemoved": "red",
+    "diffModified": "yellow",
+    "diffNormal": "white"
   }
 }
 """
@@ -134,6 +168,7 @@ type
     statusFg*, statusBg*: string
     selectionFg*, selectionBg*: string
     commentFg*, keywordFg*, stringFg*, numberFg*: string
+    diffAdded*, diffRemoved*, diffModified*, diffNormal*: string
 
   ThemeManager* = ref object
     currentTheme*: ColorTheme
