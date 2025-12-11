@@ -154,6 +154,11 @@ proc render*(editor: Editor) =
   let keywordFgColor = parseNamedColor(theme.keywordFg)
   let stringFgColor = parseNamedColor(theme.stringFg)
   let numberFgColor = parseNamedColor(theme.numberFg)
+
+  let minimapWidth = 12
+  let hasMinimap = editor.minimapEnabled and editor.screenWidth > minimapWidth + 20
+  let minimapX = editor.screenWidth - minimapWidth
+  let minimapHeight = editor.screenHeight - 1
   
   for i in 0..<editor.screenHeight - 1:
     tb.write(0, i, fgColor, bgColor, " ".repeat(editor.screenWidth))

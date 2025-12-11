@@ -55,3 +55,4 @@ type
     tabWidth*: int = 4
     diffBuffer*: seq[string]
     diffOriginalBuffer*: seq[string]
+    minimapEnabled*: bool = true
