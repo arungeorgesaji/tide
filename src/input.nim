@@ -237,9 +237,11 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":minimap on":
       editor.minimapEnabled = true
       editor.statusMessage = "minimap_enabled"
+      saveMinimapEnabled(true)
     elif cmd == ":minimap off":
       editor.minimapEnabled = false
       editor.statusMessage = "minimap_disabled"
+      saveMinimapEnabled(false)
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)

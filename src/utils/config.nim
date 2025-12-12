@@ -47,3 +47,27 @@ proc loadSyntaxEnabled*(): bool =
     except:
       return true  
   return true  
+
+proc saveMinimapEnabled*(minimapEnabled: bool) =
+  var data: JsonNode
+
+  if fileExists(configPath):
+    data = parseJson(readFile(configPath))
+  else:
+    data = %*{}   
+
+  data["minimapEnabled"] = %* minimapEnabled 
+
+  writeFile(configPath, $data)
+
+proc loadMinimapEnabled*(): bool =
+  if fileExists(configPath):
+    try:
+      let node = readFile(configPath).parseJson()
+      if node.hasKey("minimapEnabled"):
+        return node{"minimapEnabled"}.getBool
+      else:
+        return true  
+    except:
+      return true  
+  return true  

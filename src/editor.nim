@@ -21,7 +21,8 @@ proc newEditor*(filepath = ""): Editor =
     showLineNumbers: true,
     themeManager: newThemeManager(getHomeDir() / ".config" / "tide" / "themes.json"),
     language: detectLanguage(filepath),
-    syntaxEnabled: loadSyntaxEnabled()
+    syntaxEnabled: loadSyntaxEnabled(),
+    minimapEnabled: loadMinimapEnabled()
   )
 
 proc run*(editor: Editor) =

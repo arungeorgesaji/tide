@@ -49,10 +49,10 @@ type
     themeManager*: ThemeManager
     language*: Language
     syntaxEnabled*: bool = true
+    minimapEnabled*: bool = false 
     pendingOp*: PendingOp
     popup*: Popup
     count*: int
     tabWidth*: int = 4
     diffBuffer*: seq[string]
     diffOriginalBuffer*: seq[string]
-    minimapEnabled*: bool = false 
