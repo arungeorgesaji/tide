@@ -16,8 +16,9 @@ nimble install tide
 
 ## Features
 
-- **Modal editing** (Normal, Insert, Command, Search modes)
+- **Modal editing** (Normal, Insert, Command, Diff)
 - **Syntax highlighting** with language detection
+- **Minimap**
 - **Customizable themes**
 - **Undo/Redo support**
 - **Line numbering** (toggleable)
@@ -90,6 +91,9 @@ Commands are entered after pressing `:` in normal mode.
 - `:q!` - Force quit without saving
 - `:wq` or `:x` - Write and quit
 
+#### Diff Mode 
+- `:diff <file1> <file2>` - Open two files in diff mode
+
 #### Display Options
 - `:set number` or `:set nu` - Show line numbers
 - `:set nonumber` or `:set nonu` - Hide line numbers
@@ -98,9 +102,14 @@ Commands are entered after pressing `:` in normal mode.
 - `:syntax on` - Enable syntax highlighting (auto-detects language)
 - `:syntax off` - Disable syntax highlighting
 
+#### Minimap 
+
+- `:minimap on` - Enable minimap 
+- `:minimap off` - Disable minimap
+
 #### Themes
 - `:theme <name>` - Switch to specified theme
-- `:themes` - List available themes
+- `:themes` - Menu to list and select themes with preview
 
 #### Navigation
 - Arrow keys, `Home`, `End`, `PageUp`, `PageDown` work in command mode
