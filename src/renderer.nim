@@ -159,8 +159,8 @@ proc initRenderContext(editor: Editor): RenderContext =
   let theme = editor.themeManager.currentTheme
   let lineCount = editor.buffer.getLineCount()
   let lineNumWidth = if editor.showLineNumbers: max(4, ($lineCount).len + 1) else: 0
-  let minimapWidth = 12
-  let hasMinimap = editor.minimapEnabled and editor.screenWidth > minimapWidth + 20
+  let minimapWidth = 16
+  let hasMinimap = editor.minimapEnabled and editor.screenWidth > minimapWidth + 40
   
   result = RenderContext(
     tb: newTerminalBuffer(editor.screenWidth, editor.screenHeight),
@@ -224,7 +224,33 @@ proc getTokenColor(ctx: RenderContext, tokenType: TokenType): ForegroundColor =
   of tokFunction: ctx.stringFgColor
   else: ctx.fgColor
 
+proc analyzeLineContent(line: string, language: Language, syntaxEnabled: bool): tuple[hasKeyword: bool, hasString: bool, hasComment: bool, density: float] =
+  result.hasKeyword = false
+  result.hasString = false
+  result.hasComment = false
+  
+  let trimmed = line.strip()
+  if trimmed.len == 0:
+    result.density = 0.0
+    return
+  
+  result.density = float(trimmed.len) / float(max(1, line.len))
+  
+  if syntaxEnabled and language != langNone:
+    let tokens = tokenizeLine(line, language, true)
+    for token in tokens:
+      case token.tokenType
+      of tokKeyword, tokType, tokFunction:
+        result.hasKeyword = true
+      of tokString:
+        result.hasString = true
+      of tokComment:
+        result.hasComment = true
+      else:
+        discard
+
 proc renderDiffLine(ctx: var RenderContext, line: string, lineIdx, screenRow: int) =
+  let maxCol = if ctx.hasMinimap: ctx.minimapX - 2 else: ctx.editor.screenWidth
   let lineBgColor = if lineIdx == ctx.editor.cursorRow: ctx.currentLineBgColor else: ctx.bgColor
   let diffColor = if line.startsWith("+"):
                     parseNamedColor(ctx.theme.diffAdded)
@@ -237,16 +263,17 @@ proc renderDiffLine(ctx: var RenderContext, line: string, lineIdx, screenRow: in
   
   var col = ctx.textStartCol
   for ch in line:
-    if col >= ctx.editor.screenWidth: break
+    if col >= maxCol: break
     if col >= ctx.textStartCol:
       ctx.tb.write(col, screenRow, diffColor, lineBgColor, $ch)
     inc(col)
   
-  while col < ctx.editor.screenWidth:
+  while col < maxCol:
     ctx.tb.write(col, screenRow, ctx.fgColor, lineBgColor, " ")
     inc(col)
 
 proc renderNormalLine(ctx: var RenderContext, line: string, lineIdx, screenRow: int) =
+  let maxCol = if ctx.hasMinimap: ctx.minimapX - 2 else: ctx.editor.screenWidth
   let tokens = if ctx.editor.syntaxEnabled and ctx.editor.language != langNone:
                  tokenizeLine(line, ctx.editor.language, true)
                else:
@@ -256,17 +283,17 @@ proc renderNormalLine(ctx: var RenderContext, line: string, lineIdx, screenRow: 
   var col = ctx.textStartCol
   
   for token in tokens:
-    if col >= ctx.editor.screenWidth: break
+    if col >= maxCol: break
     
     let tokenColor = ctx.getTokenColor(token.tokenType)
     
     for ch in token.text:
-      if col >= ctx.editor.screenWidth: break
+      if col >= maxCol: break
       if col >= ctx.textStartCol:
         ctx.tb.write(col, screenRow, tokenColor, lineBgColor, $ch)
       inc(col)
   
-  while col < ctx.editor.screenWidth:
+  while col < maxCol:
     ctx.tb.write(col, screenRow, ctx.fgColor, lineBgColor, " ")
     inc(col)
 
@@ -281,8 +308,118 @@ proc renderTextLine(ctx: var RenderContext, lineIdx, screenRow: int) =
     ctx.renderNormalLine(line, lineIdx, screenRow)
 
 proc renderEmptyLines(ctx: var RenderContext, startRow: int) =
+  let maxCol = if ctx.hasMinimap: ctx.minimapX - 2 else: ctx.editor.screenWidth
   for i in startRow..<(ctx.editor.screenHeight - 1):
     ctx.tb.write(ctx.textStartCol, i, ctx.lineNumFgColor, ctx.bgColor, "~")
+    for col in ctx.textStartCol + 1..<maxCol:
+      ctx.tb.write(col, i, ctx.fgColor, ctx.bgColor, " ")
+
+proc renderMinimap(ctx: var RenderContext) =
+  if not ctx.hasMinimap:
+    return
+  
+  let lineCount = ctx.editor.buffer.getLineCount()
+  let minimapHeight = ctx.editor.screenHeight - 1
+  let minimapContentWidth = ctx.minimapWidth - 2
+  
+  for y in 0..<minimapHeight:
+    ctx.tb.write(ctx.minimapX - 2, y, ctx.lineNumFgColor, ctx.bgColor, " ")
+    ctx.tb.write(ctx.minimapX - 1, y, ctx.lineNumFgColor, ctx.bgColor, "┃")
+  
+  if lineCount == 0:
+    return
+  
+  let linesPerChar = max(1.0, float(lineCount) / float(minimapHeight))
+  let viewportHeight = ctx.editor.screenHeight - 1
+  
+  for y in 0..<minimapHeight:
+    let startLine = int(float(y) * linesPerChar)
+    let endLine = min(lineCount - 1, int(float(y + 1) * linesPerChar))
+    
+    var totalDensity = 0.0
+    var keywordCount = 0
+    var stringCount = 0
+    var commentCount = 0
+    var linesSampled = 0
+    
+    for lineIdx in startLine..min(endLine, lineCount - 1):
+      let line = ctx.editor.buffer.getLine(lineIdx)
+      let analysis = analyzeLineContent(line, ctx.editor.language, ctx.editor.syntaxEnabled)
+      
+      totalDensity += analysis.density
+      if analysis.hasKeyword: inc(keywordCount)
+      if analysis.hasString: inc(stringCount)
+      if analysis.hasComment: inc(commentCount)
+      inc(linesSampled)
+    
+    let avgDensity = if linesSampled > 0: totalDensity / float(linesSampled) else: 0.0
+    
+    let isInViewport = startLine >= ctx.editor.viewportRow and 
+                       startLine < ctx.editor.viewportRow + viewportHeight
+    
+    let hasCursor = ctx.editor.cursorRow >= startLine and ctx.editor.cursorRow <= endLine
+    
+    for x in 0..<minimapContentWidth:
+      var char = " "
+      var fg = ctx.lineNumFgColor
+      var bg = ctx.bgColor
+      
+      if x == 0:
+        if isInViewport:
+          if hasCursor:
+            char = "▐"
+            fg = fgYellow
+            bg = ctx.currentLineBgColor
+          else:
+            char = "▌"
+            fg = ctx.currentLineFgColor
+            bg = ctx.currentLineBgColor
+        else:
+          char = " "
+          bg = ctx.bgColor
+      
+      else:
+        if avgDensity > 0.05:
+          if commentCount > 0 and x >= minimapContentWidth - 2:
+            char = "/"
+            fg = ctx.commentFgColor
+          elif keywordCount > 0 and x mod 3 == 0:
+            if avgDensity > 0.7:
+              char = "▓"
+            elif avgDensity > 0.4:
+              char = "▒"
+            else:
+              char = "░"
+            fg = ctx.keywordFgColor
+          elif stringCount > 0 and x mod 3 == 1:
+            if avgDensity > 0.6:
+              char = "▓"
+            elif avgDensity > 0.3:
+              char = "▒"
+            else:
+              char = "░"
+            fg = ctx.stringFgColor
+          else:
+            if avgDensity > 0.8:
+              char = "█"
+              fg = ctx.fgColor
+            elif avgDensity > 0.6:
+              char = "▓"
+              fg = ctx.fgColor
+            elif avgDensity > 0.4:
+              char = "▒"
+              fg = ctx.lineNumFgColor
+            elif avgDensity > 0.2:
+              char = "░"
+              fg = ctx.lineNumFgColor
+            else:
+              char = "·"
+              fg = ctx.lineNumFgColor
+        
+        if isInViewport and char != " ":
+          bg = ctx.lineNumBgColor
+      
+      ctx.tb.write(ctx.minimapX + x, y, fg, bg, char)
 
 proc buildStatusText(editor: Editor): string =
   case editor.mode
@@ -367,7 +504,8 @@ proc renderCursor(ctx: var RenderContext) =
     else:
       ctx.editor.cursorCol - ctx.editor.viewportCol
   
-  if cursorScreenCol < 0 or cursorScreenCol >= ctx.editor.screenWidth:
+  let maxCol = if ctx.hasMinimap: ctx.minimapX - 2 else: ctx.editor.screenWidth
+  if cursorScreenCol < 0 or cursorScreenCol >= maxCol:
     return
   
   let ch = if ctx.editor.cursorCol < line.len: line[ctx.editor.cursorCol] else: ' '
@@ -399,9 +537,8 @@ proc render*(editor: Editor) =
     ctx.renderTextLine(lineIdx, i)
   
   ctx.renderEmptyLines(lineCount - editor.viewportRow)
-  
+  ctx.renderMinimap()
   ctx.renderStatusBar()
-  
   ctx.renderCursor()
   
   if editor.popup.visible:

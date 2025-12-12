@@ -234,6 +234,12 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.popup.filterCursor = 0
       if editor.popup.items.len > 0:
         discard editor.themeManager.setTheme(editor.popup.items[0])
+    elif cmd == ":minimap on":
+      editor.minimapEnabled = true
+      editor.statusMessage = "minimap_enabled"
+    elif cmd == ":minimap off":
+      editor.minimapEnabled = false
+      editor.statusMessage = "minimap_disabled"
     elif cmd == ":syntax on":
       editor.syntaxEnabled = true
       editor.language = detectLanguage(editor.buffer.name)
