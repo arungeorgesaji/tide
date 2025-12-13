@@ -17,6 +17,7 @@ nimble install tide
 ## Features
 
 - **Modal editing** (Normal, Insert, Command, Diff)
+- **Search functionality** with forward/backward navigation
 - **Syntax highlighting** with language detection
 - **Minimap**
 - **Customizable themes**
@@ -44,7 +45,7 @@ nimble install tide
 - `Home` - Move to start of line
 - `End` - Move to end of line
 - `PageUp` - Scroll up one page
-- `PageDown` - Scroll down one page
+- `PageDown` - Scroll down one page 
 
 #### Editing
 - `i` - Enter insert mode at cursor
@@ -60,8 +61,13 @@ nimble install tide
 - `P` - Paste above current line
 - `u` - Undo last change
 
+#### Search 
+- `/` - Enter search mode (forward) 
+- `n` - Jump to next occurrence of search pattern
+- `N` - Jump to previous occurrence of search pattern
+
 #### Other
-- `n` - Toggle line numbers
+- `L` - Toggle line numbers
 - `:` - Enter command mode
 - `Esc` - Cancel pending operation
 - `q` - Quit editor
@@ -71,6 +77,20 @@ Many commands support a count prefix:
 - `5j` - Move down 5 lines
 - `3w` - Move forward 3 words
 - `10k` - Move up 10 lines
+
+### Search Mode
+Search mode is entered by pressing `/` in normal mode.
+
+- Type your search pattern
+- `Enter` - Execute search and jump to first match
+- `Backspace` - Delete character in search buffer
+- `Esc` - Cancel search and return to normal mode
+
+After executing a search:
+- `n` - Find next occurrence (wraps around to beginning)
+- `N` - Find previous occurrence (wraps around to end)
+
+The status bar will display the position of found matches (e.g., "Pattern found at 42:15").
 
 ### Insert Mode
 
