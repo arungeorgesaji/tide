@@ -429,6 +429,8 @@ proc buildStatusText(editor: Editor): string =
     " INSERT "
   of modeCommand:
     " " & editor.cmdBuffer & " "
+  of modeSearch:
+    " " & editor.cmdBuffer & " "
   of modeDiff:
     " DIFF "
 
@@ -520,6 +522,8 @@ proc renderCursor(ctx: var RenderContext) =
       ctx.tb.write(cursorScreenCol, y, fgCyan, ctx.currentLineBgColor, "|")
   of modeCommand:
     ctx.tb.write(cursorScreenCol, y, fgBlack, bgWhite, $ch)
+  of modeSearch:
+    ctx.tb.write(cursorScreenCol, y, fgBlack, bgYellow, $ch)
 
 proc render*(editor: Editor) =
   editor.screenWidth = terminalWidth()

@@ -5,6 +5,54 @@ import utils/[word_navigation, count, config, diff]
 import undo, types, viewpoint
 import illwill, tables
 
+proc findNextOccurrence(editor: Editor, pattern: string, startRow, startCol: int): (int, int) =
+  result = (-1, -1)
+  var row = startRow
+  var col = startCol + 1
+  
+  for r in row..editor.buffer.lines.high:
+    let line = editor.buffer.lines[r]
+    let startIdx = if r == row: col else: 0
+    
+    let found = line.find(pattern, startIdx)
+    if found >= 0:
+      return (r, found)
+  
+  for r in 0..startRow:
+    let line = editor.buffer.lines[r]
+    let startIdx = if r == startRow: 0 else: 0
+    let found = line.find(pattern, startIdx)
+    if found >= 0 and (r != startRow or found != startCol):
+      return (r, found)
+
+proc findPrevOccurrence(editor: Editor, pattern: string, startRow, startCol: int): (int, int) =
+  result = (-1, -1)
+  var row = startRow
+  
+  if startCol > 0:
+    let line = editor.buffer.lines[row]
+    let found = line.rfind(pattern, 0, startCol - 1)
+    if found >= 0:
+      return (row, found)
+  
+  for r in countdown(row - 1, 0):
+    let line = editor.buffer.lines[r]
+    let found = line.rfind(pattern)
+    if found >= 0:
+      return (r, found)
+  
+  for r in countdown(editor.buffer.lines.high, startRow):
+    let line = editor.buffer.lines[r]
+    if r == startRow:
+      if startCol < line.len:
+        let found = line.rfind(pattern, startCol + 1, line.len - 1)
+        if found >= 0 and found > startCol:
+          return (r, found)
+    else:
+      let found = line.rfind(pattern)
+      if found >= 0:
+        return (r, found)
+
 proc handleNavigationKeys(editor: Editor, key: Key) =
   case key
   of Key.Left:   editor.cursorCol = max(0, editor.cursorCol - 1)
@@ -123,6 +171,9 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of ':':
       editor.mode = modeCommand
       editor.cmdBuffer = ":"
+    of '/':
+      editor.mode = modeSearch
+      editor.cmdBuffer = "/"
     of 'x':
       let line = editor.buffer.getLine(editor.cursorRow)
       if editor.cursorCol < line.len:
@@ -156,7 +207,27 @@ proc handleNormalMode*(editor: Editor, key: Key) =
         editor.cursorCol = 0
     of 'u':
       editor.undo()
-    of 'n':  
+    of 'n':
+      if editor.searchPattern != "":
+        let (nextRow, nextCol) = editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        if nextRow >= 0 and nextCol >= 0:
+          editor.cursorRow = nextRow
+          editor.cursorCol = nextCol
+          editor.statusMessage = "Pattern found at " & $(nextRow+1) & ":" & $(nextCol+1)
+        else:
+          editor.statusMessage = "Pattern not found"
+      else:
+        editor.showLineNumbers = not editor.showLineNumbers
+    of 'N':
+      if editor.searchPattern != "":
+        let (prevRow, prevCol) = editor.findPrevOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        if prevRow >= 0 and prevCol >= 0:
+          editor.cursorRow = prevRow
+          editor.cursorCol = prevCol
+          editor.statusMessage = "Pattern found at " & $(prevRow+1) & ":" & $(prevCol+1)
+        else:
+          editor.statusMessage = "Pattern not found"
+    of 'L':  
       editor.showLineNumbers = not editor.showLineNumbers
     of 'q':
       editor.running = false
@@ -266,6 +337,33 @@ proc handleCommandMode*(editor: Editor, key: Key) =
   elif key == Key.Escape:
     editor.mode = modeNormal
     editor.cmdBuffer = ""
+  elif key.ord > 0:
+    editor.cmdBuffer &= chr(key.ord)
+
+proc handleSearchMode*(editor: Editor, key: Key) =
+  if key == Key.Escape:
+    editor.mode = modeNormal
+    editor.cmdBuffer = ""
+    return
+  
+  if key == Key.Enter:
+    if editor.cmdBuffer.len > 1:
+      editor.searchPattern = editor.cmdBuffer[1..^1]
+      let (nextRow, nextCol) = editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+      if nextRow >= 0 and nextCol >= 0:
+        editor.cursorRow = nextRow
+        editor.cursorCol = nextCol
+        editor.statusMessage = "Pattern found at " & $(nextRow+1) & ":" & $(nextCol+1)
+      else:
+        editor.statusMessage = "Pattern not found: " & editor.searchPattern
+    editor.mode = modeNormal
+    editor.cmdBuffer = ""
+  elif key == Key.Backspace:
+    if editor.cmdBuffer.len > 1:
+      editor.cmdBuffer.setLen(editor.cmdBuffer.len - 1)
+    else:
+      editor.mode = modeNormal
+      editor.cmdBuffer = ""
   elif key.ord > 0:
     editor.cmdBuffer &= chr(key.ord)
 

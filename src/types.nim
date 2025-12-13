@@ -3,7 +3,7 @@ import tui/[theme, syntax]
 
 type
   EditorMode* = enum
-    modeNormal, modeInsert, modeCommand, modeDiff
+    modeNormal, modeInsert, modeCommand, modeSearch, modeDiff
 
   UndoAction* = enum
     uaInsertChar, uaDeleteChar, uaInsertLine, uaDeleteLine, uaSetLine
@@ -56,3 +56,4 @@ type
     tabWidth*: int = 4
     diffBuffer*: seq[string]
     diffOriginalBuffer*: seq[string]
+    searchPattern*: string

@@ -42,6 +42,7 @@ proc run*(editor: Editor) =
         of modeNormal: editor.handleNormalMode(key)
         of modeInsert: editor.handleInsertMode(key)
         of modeCommand: editor.handleCommandMode(key)
+        of modeSearch: editor.handleSearchMode(key)
         of modeDiff: discard
     else:
       sleep(10)
