@@ -174,6 +174,11 @@ proc handleNormalMode*(editor: Editor, key: Key) =
     of '/':
       editor.mode = modeSearch
       editor.cmdBuffer = "/"
+      editor.searchForward = true 
+    of '?':
+      editor.mode = modeSearch
+      editor.cmdBuffer = "?"
+      editor.searchForward = false  
     of 'x':
       let line = editor.buffer.getLine(editor.cursorRow)
       if editor.cursorCol < line.len:
@@ -209,7 +214,12 @@ proc handleNormalMode*(editor: Editor, key: Key) =
       editor.undo()
     of 'n':
       if editor.searchPattern != "":
-        let (nextRow, nextCol) = editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        let (nextRow, nextCol) = 
+          if editor.searchForward:
+            editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+          else:
+            editor.findPrevOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        
         if nextRow >= 0 and nextCol >= 0:
           editor.cursorRow = nextRow
           editor.cursorCol = nextCol
@@ -220,7 +230,12 @@ proc handleNormalMode*(editor: Editor, key: Key) =
         editor.showLineNumbers = not editor.showLineNumbers
     of 'N':
       if editor.searchPattern != "":
-        let (prevRow, prevCol) = editor.findPrevOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        let (prevRow, prevCol) = 
+          if editor.searchForward:
+            editor.findPrevOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+          else:
+            editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        
         if prevRow >= 0 and prevCol >= 0:
           editor.cursorRow = prevRow
           editor.cursorCol = prevCol
@@ -349,11 +364,18 @@ proc handleSearchMode*(editor: Editor, key: Key) =
   if key == Key.Enter:
     if editor.cmdBuffer.len > 1:
       editor.searchPattern = editor.cmdBuffer[1..^1]
-      let (nextRow, nextCol) = editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
-      if nextRow >= 0 and nextCol >= 0:
-        editor.cursorRow = nextRow
-        editor.cursorCol = nextCol
-        editor.statusMessage = "Pattern found at " & $(nextRow+1) & ":" & $(nextCol+1)
+      
+      let (foundRow, foundCol) = 
+        if editor.searchForward:
+          editor.findNextOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+        else:
+          editor.findPrevOccurrence(editor.searchPattern, editor.cursorRow, editor.cursorCol)
+      
+      if foundRow >= 0 and foundCol >= 0:
+        editor.cursorRow = foundRow
+        editor.cursorCol = foundCol
+        let direction = if editor.searchForward: "forward" else: "backward"
+        editor.statusMessage = "Pattern found at " & $(foundRow+1) & ":" & $(foundCol+1) & " (" & direction & ")"
       else:
         editor.statusMessage = "Pattern not found: " & editor.searchPattern
     editor.mode = modeNormal

@@ -57,3 +57,4 @@ type
     diffBuffer*: seq[string]
     diffOriginalBuffer*: seq[string]
     searchPattern*: string
+    searchForward*: bool
