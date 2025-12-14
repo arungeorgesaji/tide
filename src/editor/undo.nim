@@ -1,4 +1,5 @@
-import types, viewpoint
+import ../types 
+import viewpoint
 import strutils
 
 proc pushUndo*(editor: Editor, action: UndoAction, row, col: int, text: string = "") =
