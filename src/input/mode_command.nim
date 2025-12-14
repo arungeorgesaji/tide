@@ -50,6 +50,12 @@ proc handleCommandMode*(editor: Editor, key: Key) =
     elif cmd == ":set nonumber" or cmd == ":set nonu":
       editor.showLineNumbers = false
       editor.statusMessage = "line_numbers_disabled"
+    elif cmd == ":set wrap":
+      editor.lineWrap = true
+      editor.statusMessage = "line_wrap_enabled"
+    elif cmd == ":set nowrap":
+      editor.lineWrap = false
+      editor.statusMessage = "line_wrap_disabled"
     elif cmd.startsWith(":theme "):
       let themeName = cmd[7..^1].strip()
       if editor.themeManager.setTheme(themeName):

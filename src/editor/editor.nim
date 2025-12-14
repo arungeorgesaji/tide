@@ -1,7 +1,7 @@
 import core/buffer
 import types 
 import input/[mode_normal, mode_insert, mode_command, mode_search, popup_navigation]
-import tui/[theme, syntax, renderer]
+import tui/[theme, syntax, renderer/render]
 import utils/config
 import illwill, os
 

@@ -41,6 +41,7 @@ type
     screenWidth*, screenHeight*: int
     cmdBuffer*: string
     statusMessage*: string
+    lineWrap*: bool = true
     undoStack*: seq[UndoItem]      
     yankBuffer*: string
     viewportRow*: int  
