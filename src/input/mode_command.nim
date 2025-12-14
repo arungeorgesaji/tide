@@ -1,8 +1,8 @@
 import std/[sequtils, strutils]
-import ../types
-import ../core/buffer
-import ../utils/[config, diff]
-import ../tui/[theme, syntax]
+import types
+import core/buffer
+import utils/[config, diff]
+import tui/[theme, syntax]
 import navigation
 import illwill, tables
 

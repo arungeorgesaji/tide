@@ -1,4 +1,5 @@
-import os, strutils  
+import std/strutils
+import os  
 
 type
   Buffer* = ref object

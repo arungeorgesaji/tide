@@ -1,5 +1,5 @@
-import ../types
-import ../core/buffer
+import types
+import core/buffer
 
 proc clampCursor*(editor: Editor) =
   editor.cursorRow = editor.cursorRow.clamp(0, max(0, editor.buffer.lines.high))

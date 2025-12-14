@@ -1,6 +1,6 @@
-import ../types
-import ../core/buffer
-import ../editor/viewpoint
+import types
+import core/buffer
+import editor/viewpoint
 import illwill
 
 proc handleNavigationKeys*(editor: Editor, key: Key) =

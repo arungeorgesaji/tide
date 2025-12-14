@@ -1,5 +1,5 @@
 import std/strutils
-import ../types
+import types
 
 proc findNextOccurrence*(editor: Editor, pattern: string, startRow, startCol: int): (int, int) =
   result = (-1, -1)

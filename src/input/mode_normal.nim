@@ -1,8 +1,8 @@
-import ../types
-import ../editor/[undo, viewpoint]
+import types
+import editor/[undo, viewpoint]
 import navigation, search
-import ../core/buffer
-import ../utils/[word_navigation, count]
+import core/buffer
+import utils/[word_navigation, count]
 import illwill
 
 proc handleNormalMode*(editor: Editor, key: Key) =

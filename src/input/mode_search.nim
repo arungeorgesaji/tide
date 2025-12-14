@@ -1,4 +1,4 @@
-import ../[types]
+import types
 import search
 import illwill
 

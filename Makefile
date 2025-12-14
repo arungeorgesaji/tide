@@ -1,18 +1,19 @@
-.PHONY: build run clean test
+.PHONY: build run debug clean test
 
 build:
 	nimble build
 
 run:
-	nim c -r src/nexus.nim
+	nimble run
 
 debug:
-	nim c -r --debugger:native src/nexus.nim
+	nimble run --debugger:native
 
 clean:
-	rm -f nexus
+	nimble clean
+	rm -f tide
 	find . -name "*.o" -delete
 	find . -name "*.exe" -delete
 
 test:
-	echo "Tests coming soon"
+	echo "Tests not implemented yet."

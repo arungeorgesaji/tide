@@ -1,5 +1,5 @@
 import std/[json, tables, os, sequtils]
-import ../utils/config
+import utils/config
 
 const defaultThemesJson = """
 {

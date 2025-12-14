@@ -1,4 +1,4 @@
-import ../types
+import types
 import strutils
 
 proc isWordChar(c: char): bool =

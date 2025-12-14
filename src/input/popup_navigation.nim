@@ -1,6 +1,6 @@
 import std/[sequtils, strutils]
-import ../types 
-import ../tui/theme
+import types 
+import tui/theme
 import illwill, tables
 
 proc handlePopupNavigation*(editor: Editor, key: Key) =

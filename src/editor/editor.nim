@@ -1,8 +1,8 @@
-import ../core/buffer
-import ../types, ../tui/renderer
-import ../input/[mode_normal, mode_insert, mode_command, mode_search, popup_navigation]
-import ../tui/[theme, syntax]
-import ../utils/config
+import core/buffer
+import types 
+import input/[mode_normal, mode_insert, mode_command, mode_search, popup_navigation]
+import tui/[theme, syntax, renderer]
+import utils/config
 import illwill, os
 
 proc newEditor*(filepath = ""): Editor =

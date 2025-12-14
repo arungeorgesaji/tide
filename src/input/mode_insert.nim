@@ -1,7 +1,7 @@
 import std/strutils
-import ../types
-import ../editor/[undo, viewpoint]
-import ../core/buffer
+import types
+import editor/[undo, viewpoint]
+import core/buffer
 import navigation
 import illwill
 
