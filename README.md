@@ -132,6 +132,10 @@ Commands are entered after pressing `:` in normal mode.
 - `:theme <name>` - Switch to specified theme
 - `:themes` - Menu to list and select themes with preview
 
+#### Others 
+- `:pwd` - Print working directory
+- `:version` - Show Tide version information
+
 #### Navigation
 - Arrow keys, `Home`, `End`, `PageUp`, `PageDown` work in command mode
 - `Backspace` - Delete character in command buffer

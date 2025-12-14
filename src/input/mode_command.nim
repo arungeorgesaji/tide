@@ -1,4 +1,4 @@
-import std/[sequtils, strutils]
+import std/[sequtils, strutils, os]
 import types
 import core/buffer
 import utils/[config, diff]
@@ -92,6 +92,10 @@ proc handleCommandMode*(editor: Editor, key: Key) =
       editor.language = langNone
       editor.statusMessage = "syntax_highlighting_disabled"
       saveSyntaxEnabled(false)
+    elif cmd == ":pwd":
+      editor.statusMessage = getCurrentDir()
+    elif cmd == ":version" or cmd == ":ver":
+      editor.statusMessage = "Tide v1.0"
     elif cmd.startsWith(":"):
       editor.statusMessage = "unknown_command: " & cmd
     
