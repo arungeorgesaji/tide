@@ -1,4 +1,4 @@
-import std/[json, tables, os, sequtils, strutils]
+import std/[json, tables, os, sequtils]
 import ../utils/config
 
 const defaultThemesJson = """

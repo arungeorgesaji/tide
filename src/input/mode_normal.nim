@@ -1,4 +1,3 @@
-import std/[sequtils, strutils]
 import ../[types, undo, viewpoint]
 import navigation, search
 import ../core/buffer

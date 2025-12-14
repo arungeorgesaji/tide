@@ -1,10 +1,8 @@
-import std/[strutils, sequtils]
+import std/strutils
 import ../[types, undo, viewpoint]
 import ../core/buffer
-import ../utils/[diff, config]
-import ../tui/[theme, syntax]
-import navigation, search
-import illwill, tables
+import navigation
+import illwill
 
 proc handleInsertMode*(editor: Editor, key: Key) =
   if editor.mode == modeDiff:

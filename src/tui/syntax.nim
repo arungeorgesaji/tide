@@ -1,4 +1,4 @@
-import std/[strutils, tables, sequtils, os]
+import std/[strutils, os]
 import theme
 
 type

@@ -1,5 +1,3 @@
-import std/[strutils, sequtils]
-
 proc computeDiff*(a, b: seq[string]): seq[string] =
   result = @[]
 
