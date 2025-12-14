@@ -61,10 +61,11 @@ nimble install tide
 - `P` - Paste above current line
 - `u` - Undo last change
 
-#### Search 
-- `/` - Enter search mode (forward) 
-- `n` - Jump to next occurrence of search pattern
-- `N` - Jump to previous occurrence of search pattern
+#### Search
+- `/` - Enter search mode (search forward)
+- `?` - Enter search mode (search backward)
+- `n` - Repeat search in the same direction
+- `N` - Repeat search in the opposite direction
 
 #### Other
 - `L` - Toggle line numbers
@@ -79,7 +80,7 @@ Many commands support a count prefix:
 - `10k` - Move up 10 lines
 
 ### Search Mode
-Search mode is entered by pressing `/` in normal mode.
+Search mode is entered by pressing `/` in normal mode or `?` for backward search.
 
 - Type your search pattern
 - `Enter` - Execute search and jump to first match
