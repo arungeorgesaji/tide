@@ -1,5 +1,6 @@
 import core/buffer
-import types, undo, viewpoint, renderer, input
+import types, renderer
+import input/[search, mode_normal, mode_insert, mode_command, mode_search, popup_navigation]
 import tui/[theme, syntax]
 import utils/config
 import illwill, os, strutils
